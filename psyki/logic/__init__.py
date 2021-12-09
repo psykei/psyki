@@ -17,12 +17,27 @@ LESS_PRIORITY: int = 200
 NEGATION_PRIORITY: int = 800
 VARIABLE_PRIORITY: int = 1000
 
+DEFAULT_NAME: str = 'Abstract logic operator'
+CLASS_NAME: str = 'Class'
+CONJUNCTION_NAME: str = 'Conjunction operator'
+DISEQUAL_NAME: str = 'Disequal operator'
+DISJUNCTION_NAME: str = 'Disjunction operator'
+EQUIVALENCE_NAME: str = 'Equivalence operator'
+GREATER_EQUAL_NAME: str = 'Greater or equal operator'
+GREATER_NAME: str = 'Greater operator'
+IMPLICATION_NAME: str = 'Implication operator'
+LESS_EQUAL_NAME: str = 'Less or equal operator'
+LESS_NAME: str = 'Less operator'
+NEGATION_NAME: str = 'Negation operator'
+VARIABLE_NAME: str = 'Variable'
+
 
 class LogicOperation:
 
-    def __init__(self):
-        self.priority: int = DEFAULT_PRIORITY
-        self.arity: int = 0
+    def __init__(self, name: str = DEFAULT_NAME, priority: int = DEFAULT_PRIORITY, arity: int = 0):
+        self.name: str = name
+        self.priority: int = priority
+        self.arity: int = arity
 
     def accept(self):
         pass
@@ -30,9 +45,8 @@ class LogicOperation:
 
 class Op2(LogicOperation):
 
-    def __init__(self, l1: L, l2: L):
-        super().__init__()
-        self.arity: int = 2
+    def __init__(self, l1: L, l2: L, name: str = DEFAULT_NAME, priority: int = DEFAULT_PRIORITY):
+        super().__init__(name, priority, 2)
         self.l1 = l1
         self.l2 = l2
 
@@ -42,12 +56,19 @@ class Op2(LogicOperation):
 
 class Op1(LogicOperation):
 
-    def __init__(self):
-        super().__init__()
-        self.arity: int = 1
+    def __init__(self, name: str = DEFAULT_NAME, priority: int = DEFAULT_PRIORITY):
+        super().__init__(name, priority, 1)
 
     def accept(self):
         pass
+
+
+class LeftPar(LogicOperation):
+    pass
+
+
+class RightPar(LogicOperation):
+    pass
 
 
 class L(Op1):
@@ -57,9 +78,8 @@ class L(Op1):
         Logic variable, 0 is true and 1 is false.
         :param x: is a tensorflow tensor of one element (can be interpreted as a scalar)
         """
-        super().__init__()
+        super().__init__(VARIABLE_NAME, VARIABLE_PRIORITY)
         self.x = x
-        self.priority = VARIABLE_PRIORITY
 
     def accept(self) -> L:
         return self
@@ -91,8 +111,7 @@ class Equivalence(Op2):
         """
         Logic equivalence between two variables (x = y).
         """
-        super().__init__(l1, l2)
-        self.priority = EQUIVALENCE_PRIORITY
+        super().__init__(l1, l2, EQUIVALENCE_NAME, EQUIVALENCE_PRIORITY)
 
     def accept(self) -> Tensor:
         return L.relu(self.l1.x - self.l2.x)
@@ -110,8 +129,7 @@ class Implication(Op2):
         1 | 0 | 0
         1 | 1 | 0
         """
-        super().__init__(l1, l2)
-        self.priority = IMPLICATION_PRIORITY
+        super().__init__(l1, l2, IMPLICATION_NAME, IMPLICATION_PRIORITY)
 
     def accept(self) -> Tensor:
         return L.relu(self.l1.x - self.l2.x)
@@ -137,8 +155,7 @@ class Conjunction(Op2):
         """
         Logic conjunction between two variables (x ^ y).
         """
-        super().__init__(l1, l2)
-        self.priority = CONJUNCTION_PRIORITY
+        super().__init__(l1, l2, CONJUNCTION_NAME, CONJUNCTION_PRIORITY)
 
     def accept(self) -> Tensor:
         return tf.maximum(self.l1.x, self.l2.x)
@@ -150,8 +167,7 @@ class Disjunction(Op2):
         """
         Logic disjunction between two variables (x ∨ y, this is a descending wedge not a v!).
         """
-        super().__init__(l1, l2)
-        self.priority = DISJUNCTION_PRIORITY
+        super().__init__(l1, l2, DISJUNCTION_NAME, DISJUNCTION_PRIORITY)
 
     def accept(self) -> Tensor:
         return tf.minimum(self.l1.x, self.l2.x)
@@ -160,9 +176,7 @@ class Disjunction(Op2):
 class GreaterEqual(Op2):
 
     def __init__(self, l1: L, l2: L):
-
-        super().__init__(l1, l2)
-        self.priority = GREATER_EQUAL_PRIORITY
+        super().__init__(l1, l2, GREATER_EQUAL_NAME, GREATER_EQUAL_PRIORITY)
 
     def accept(self) -> Tensor:
         return L.relu(L.false() - L.relu(self.l1.x - self.l2.x))
@@ -171,8 +185,7 @@ class GreaterEqual(Op2):
 class Greater(Op2):
 
     def __init__(self, l1: L, l2: L):
-        super().__init__(l1, l2)
-        self.priority = GREATER_PRIORITY
+        super().__init__(l1, l2, GREATER_NAME, GREATER_PRIORITY)
 
     def accept(self) -> Tensor:
         return tf.minimum(GreaterEqual(self.l1, self.l2).accept(), Disequal(self.l1, self.l2).accept())
@@ -181,8 +194,7 @@ class Greater(Op2):
 class Disequal(Op2):
 
     def __init__(self, l1: L, l2: L):
-        super().__init__(l1, l2)
-        self.priority = DISEQUAL_PRIORITY
+        super().__init__(l1, l2, DISEQUAL_NAME, DISEQUAL_PRIORITY)
 
     def accept(self) -> Tensor:
         return L.false() - L.fringe(self.l1.x - self.l2.x)
@@ -191,8 +203,7 @@ class Disequal(Op2):
 class Less(Op2):
 
     def __init__(self, l1: L, l2: L):
-        super().__init__(l1, l2)
-        self.priority = LESS_PRIORITY
+        super().__init__(l1, l2, LESS_NAME, LESS_PRIORITY)
 
     def accept(self) -> Tensor:
         return Conjunction(L(GreaterEqual(self.l1, self.l2).accept()), L(Disequal(self.l1, self.l2).accept())).accept()
@@ -201,8 +212,7 @@ class Less(Op2):
 class LessEqual(Op2):
 
     def __init__(self, l1: L, l2: L):
-        super().__init__(l1, l2)
-        self.priority = LESS_EQUAL_PRIORITY
+        super().__init__(l1, l2, LESS_EQUAL_NAME, LESS_EQUAL_PRIORITY)
 
     def accept(self) -> Tensor:
         return Negation(L(Greater(self.l1, self.l2).accept())).accept()
