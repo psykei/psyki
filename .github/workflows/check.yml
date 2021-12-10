@@ -9,7 +9,6 @@ env:
   PROJECT_NAME: psyki
   WORKFLOW: check
 jobs:
-
   run-unit-tests:
     runs-on: ubuntu-latest
     strategy:
