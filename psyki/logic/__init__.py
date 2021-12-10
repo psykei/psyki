@@ -18,6 +18,7 @@ IMPLICATION_PRIORITY: int = 0
 LESS_EQUAL_PRIORITY: int = 200
 LESS_PRIORITY: int = 200
 NEGATION_PRIORITY: int = 800
+PAR_PRIORITY: int = 2000
 VARIABLE_PRIORITY: int = 1000
 
 DEFAULT_NAME: str = 'Abstract logic operator'
@@ -38,7 +39,7 @@ VARIABLE_NAME: str = 'Variable'
 
 DEFAULT_REGEX: str = ''
 CLASS_X_REGEX: str = 'X'
-CLASS_Y_REGEX: str = r'X|[a-z]+[0-9]*\.'
+CLASS_Y_REGEX: str = '[a-z]+[0-9]*'
 CONJUNCTION_REGEX: str = r'\^'
 DISEQUAL_REGEX: str = '!='
 DISJUNCTION_REGEX: str = r'\∨'  # this is a descending wedge not a v!
@@ -46,11 +47,13 @@ EQUIVALENCE_REGEX: str = '='
 GREATER_EQUAL_REGEX: str = '>='
 GREATER_REGEX: str = '>'
 IMPLICATION_REGEX: str = '->'
+LEFT_PAR_REGEX: str = r'\('
 LESS_EQUAL_REGEX: str = '<='
 LESS_REGEX: str = '<'
 LT_EQUIVALENCE_REGEX: str = r'\|='
 NEGATION_REGEX: str = r'\~'
-VARIABLE_REGEX: str = '[A-Z]([a-z]|[0-9])+'
+RIGHT_PAR_REGEX: str = r'\)'
+VARIABLE_REGEX: str = '[A-Z]([a-z]|[A-Z]|[0-9])+'
 
 
 class LogicOperator:
@@ -93,11 +96,21 @@ class Op1(LogicOperator):
 
 
 class LeftPar(LogicOperator):
-    pass
+
+    priority: int = PAR_PRIORITY
+
+    @staticmethod
+    def parse(string: str):
+        return LogicOperator._parse(LEFT_PAR_REGEX, string)
 
 
 class RightPar(LogicOperator):
-    pass
+
+    priority: int = PAR_PRIORITY
+
+    @staticmethod
+    def parse(string: str):
+        return LogicOperator._parse(RIGHT_PAR_REGEX, string)
 
 
 class L(Op1):
@@ -153,7 +166,7 @@ class Equivalence(Op2):
         super().__init__(l1, l2, EQUIVALENCE_NAME)
 
     def accept(self) -> Tensor:
-        return L.relu(self.l1.x - self.l2.x)
+        return L.relu(tf.abs(self.l1.x - self.l2.x))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -177,7 +190,7 @@ class Implication(Op2):
         super().__init__(l1, l2, IMPLICATION_NAME)
 
     def accept(self) -> Tensor:
-        return L.relu(self.l1.x - self.l2.x)
+        return L.relu(self.l2.x - self.l1.x)
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:

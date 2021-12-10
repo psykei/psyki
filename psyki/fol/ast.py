@@ -1,5 +1,5 @@
 from typing import Union, Any, Callable
-from psyki.logic import LogicOperator, L, LT, LeftPar, RightPar, Implication, LTEquivalence, LTX, LTY
+from psyki.logic import LogicOperator, L, LT, LeftPar, RightPar, Implication, LTX, LTY
 
 
 class AST:
@@ -10,12 +10,16 @@ class AST:
         self.parent_ast: Union[AST, None] = parent_ast
 
     def insert(self, lo: LogicOperator.__class__, arg: Any):
-        # If there is an open left par call insert on the tmp ast
+        # If there is already an open left par call insert on the tmp ast
         if self.tmp_ast is not None:
             self.tmp_ast.insert(lo, arg)
         # If there is a right par close the tmp ast
         elif lo == RightPar and self.parent_ast is not None:
-            self.parent_ast.root.children.append(self.root)
+            # If the parent ast is not empty append this ast as the rightmost child
+            if self.parent_ast.root is not None:
+                self.parent_ast.root.children.append(self.root)
+            else:
+                self.parent_ast.root = self.root
             self.parent_ast.tmp_ast = None
         # Create a new tmp ast if there is a left par
         elif lo == LeftPar:
@@ -54,11 +58,11 @@ class Node:
         elif self.operator == LTY:
             return lambda _: self.operator(output_mapping[self.arg]).accept()
         elif self.operator.arity == 1:
-            return lambda x: self.operator(self.children[0].call(im, om)(x)).accept()
+            return lambda x: L(self.operator(self.children[0].call(im, om)(x)).accept())
         elif self.operator.arity == 2 and (self.operator == Implication):
             return lambda x, y: self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(y)).accept()
         else:
-            return lambda x: self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(x)).accept()
+            return lambda x: L(self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(x)).accept())
 
     def is_complete(self) -> bool:
         if self.operator == L or self.operator == LT:
@@ -76,7 +80,6 @@ class Node:
             done = node._insert(lo, arg, done)
         if not done:
             self.children.append(Node(lo, arg))
-        # raise Exception(self.operator.name + ' accept exactly ' + str(self.operator.arity) + 'arguments.')
 
     def _insert(self, lo: LogicOperator.__class__, arg: Any, done: bool) -> bool:
         for node in self.children:
