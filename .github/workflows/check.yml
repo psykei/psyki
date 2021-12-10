@@ -23,8 +23,6 @@ jobs:
           - '3.9.6'
           - '3.9.7'
     name: Run tests on Python ${{ matrix.python-version }}
-    needs:
-      - create-test-predictors-if-needed
     steps:
       - name: Setup Python
         uses: actions/setup-python@v2
