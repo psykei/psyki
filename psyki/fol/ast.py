@@ -1,5 +1,6 @@
 from typing import Union, Any, Callable
-from psyki.logic import LogicOperator, L, LT, LeftPar, RightPar, Implication, LTX, LTY
+import tensorflow as tf
+from psyki.logic import LogicOperator, L, LT, LeftPar, RightPar, Implication, LTX, LTY, Exist
 
 
 class AST:
@@ -49,20 +50,23 @@ class Node:
         self.arg = arg
         self.children: list[Node] = [] if children is None else children
 
-    def call(self, input_mapping: dict, output_mapping: dict) -> Callable:
+    def call(self, input_mapping: dict, output_mapping: dict = None) -> Callable:
         im, om = input_mapping, output_mapping
-        if self.operator == L:
-            return lambda x: self.operator(x[input_mapping[self.arg]]).accept()
-        elif self.operator == LTX:
-            return lambda x: self.operator(x).accept()
+        if self.operator == LTX:
+            return lambda x: self.operator(x).compute()
         elif self.operator == LTY:
-            return lambda _: self.operator(output_mapping[self.arg]).accept()
+            return lambda _: self.operator(output_mapping[self.arg]).compute()
+        elif self.operator == L:
+            return lambda x: self.operator(x[input_mapping[self.arg]]).compute()
+        elif self.operator.arity == 0:
+            if self.operator == Exist:
+                return Node._exist(self.operator, self.arg, im)
         elif self.operator.arity == 1:
-            return lambda x: L(self.operator(self.children[0].call(im, om)(x)).accept())
+            return lambda x: self.operator(self.children[0].call(im, om)(x)).compute()
         elif self.operator.arity == 2 and (self.operator == Implication):
-            return lambda x, y: self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(y)).accept()
+            return lambda x, y: self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(y)).compute()
         else:
-            return lambda x: L(self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(x)).accept())
+            return lambda x: self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(x)).compute()
 
     def is_complete(self) -> bool:
         if self.operator == L or self.operator == LT:
@@ -92,3 +96,14 @@ class Node:
             return True
         elif not done:
             return False
+
+    @staticmethod
+    def _exist(operator: Exist.__class__, arg: Any, input_mapping: dict) -> Callable:
+        local_vars = arg[0]
+        expression = arg[1]
+        vars = arg[2]
+        ast = AST()
+        for op, local_arg in expression:
+            ast.insert(op, local_arg)
+        indices = [input_mapping.get(name) for name in vars]
+        return lambda x: operator(local_vars, ast, tf.gather(x, indices, axis=0)).compute()

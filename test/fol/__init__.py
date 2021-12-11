@@ -3,6 +3,7 @@ from psyki.fol import Parser
 from psyki.fol.ast import AST
 from psyki.logic import *
 import tensorflow as tf
+from test.resources import get_rules
 
 
 class TestFol(unittest.TestCase):
@@ -31,45 +32,39 @@ class TestFol(unittest.TestCase):
         'straightFlush':    tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32),
         'royalFlush':       tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=tf.float32)
     }
-    rules = {
-        'nothing': '',
-        'pair': '',
-        'twoPairs': '',
-        'tris': '(R1 = R2 ^ R1 = R3) ∨ (R1 = R2 ^ R1 = R4) ∨ (R1 = R2 ^ R1 = R5) ∨ (R2 = R3 ^ R2 = R4) ∨ '
-                '(R2 = R3 ^ R2 = R5) ∨ (R3 = R4 ^ R3 = R5) -> X |= tris',
-        'straight': '',
-        'flush': 'S1 = S2 ^ S1 = S3 ^ S1 = S4 -> X |= flush',
-        'full': '',
-        'poker': '(R1 = R2 ^ R1 = R3 ^ R1 = R4) ∨ (R1 = R2 ^ R1 = R3 ^ R1 = R5) ∨ '
-                 '(R1 = R2 ^ R1 = R4 ^ R1 = R5) ∨ (R1 = R3 ^ R1 = R4 ^ R1 = R5) ∨ '
-                 '(R2 = R3 ^ R2 = R4 ^ R2 = R5) -> X |= poker',
-        'straightFlush': '',
-        'royalFlush': ''
-    }
+    rules = get_rules('poker')
 
     def test_flush(self):
-        hand = tf.constant([4, 4, 4, 13, 4, 7, 4, 11, 4, 1], dtype=tf.float32)
-        output = tf.constant([0, 0, 0, 0, 0, 1, 0, 0, 0, 0], dtype=tf.float32)
+        hand1 = tf.constant([4, 4, 4, 13, 4, 7, 4, 11, 4, 1], dtype=tf.float32)
+        output1 = tf.constant([0, 0, 0, 0, 0, 1, 0, 0, 0, 0], dtype=tf.float32)
         parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication])
         function = self._get_function(parser, 'flush')
-        result = function(hand, output)
-        self.assertEqual(result, L.true())
+        result1 = function(hand1, output1).get_value()
+        self.assertEqual(result1, L.true())
+
+        hand2 = tf.constant([4, 4, 1, 13, 4, 7, 4, 11, 4, 1], dtype=tf.float32)
+        result2 = function(hand2, output1).get_value()
+        self.assertEqual(result2, L.true())
+
+        output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
+        result3 = function(hand1, output2).get_value()
+        self.assertEqual(result3, L.false())
 
     def test_poker(self):
         hand = tf.constant([4, 9, 4, 9, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
         output = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
         parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, Disjunction, LeftPar, RightPar])
         function = self._get_function(parser, 'poker')
-        result = function(hand, output)
+        result = function(hand, output).get_value()
         self.assertEqual(result, L.true())
 
     def test_tris(self):
-        hand = tf.constant([4, 9, 4, 9, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
+        hand = tf.constant([4, 9, 4, 2, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
         output = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         parser = Parser(
-            [L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, Disjunction, LeftPar, RightPar])
+            [L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, Disjunction, LeftPar, RightPar, Exist])
         function = self._get_function(parser, 'tris')
-        result = function(hand, output)
+        result = function(hand, output).get_value()
         self.assertEqual(result, L.true())
 
     def _get_function(self, parser, label):
