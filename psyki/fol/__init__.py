@@ -11,6 +11,7 @@ class Parser:
         results = []
         string = string.replace(' ', '')
         while len(string) > 0:
+            old_string = string
             for op in self.accepted_operators:
                 match, value = op.parse(string)
                 if match:
@@ -19,7 +20,8 @@ class Parser:
                         value = self._get_exist_value(value)
                     results.append((op, value))
                     break
-                # raise Exception('Parser cannot parse the provided string.')
+            if old_string == string:
+                raise Exception('Parser cannot parse the provided string.')
         return results
 
     def _get_exist_value(self, string: str) -> Any:

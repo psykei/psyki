@@ -34,38 +34,80 @@ class TestFol(unittest.TestCase):
     }
     rules = get_rules('poker')
 
+    def test_two_pairs(self):
+        hand1 = tf.constant([4, 9, 4, 2, 4, 2, 4, 6, 4, 9], dtype=tf.float32)
+        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
+        output1 = tf.constant([0, 0, 1, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
+        output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
+        parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Disjunction, Implication, LeftPar,
+                         RightPar, Exist, Disequal])
+        function = self._get_function(parser, 'twoPairs')
+
+        self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
+
     def test_flush(self):
         hand1 = tf.constant([4, 4, 4, 13, 4, 7, 4, 11, 4, 1], dtype=tf.float32)
+        hand2 = tf.constant([4, 4, 1, 13, 4, 7, 4, 11, 4, 1], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 1, 0, 0, 0, 0], dtype=tf.float32)
+        output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
         parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication])
         function = self._get_function(parser, 'flush')
-        result1 = function(hand1, output1).get_value()
-        self.assertEqual(result1, L.true())
 
-        hand2 = tf.constant([4, 4, 1, 13, 4, 7, 4, 11, 4, 1], dtype=tf.float32)
-        result2 = function(hand2, output1).get_value()
-        self.assertEqual(result2, L.true())
+        self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
 
-        output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
-        result3 = function(hand1, output2).get_value()
-        self.assertEqual(result3, L.false())
+    def test_full(self):
+        hand1 = tf.constant([4, 9, 4, 2, 4, 9, 4, 9, 4, 2], dtype=tf.float32)
+        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
+        output1 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
+        output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
+        parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, Disjunction, LeftPar,
+                         RightPar, Exist, Disequal])
+        function = self._get_function(parser, 'full')
+
+        self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
 
     def test_poker(self):
-        hand = tf.constant([4, 9, 4, 9, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
-        output = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
-        parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, Disjunction, LeftPar, RightPar])
+        hand1 = tf.constant([4, 9, 4, 9, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
+        hand2 = tf.constant([4, 9, 4, 5, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
+        output1 = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
+        output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
+        parser = Parser(
+            [L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, Disjunction, LeftPar, RightPar])
         function = self._get_function(parser, 'poker')
-        result = function(hand, output).get_value()
-        self.assertEqual(result, L.true())
+
+        self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
 
     def test_tris(self):
-        hand = tf.constant([4, 9, 4, 2, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
-        output = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
+        hand1 = tf.constant([4, 9, 4, 2, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
+        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
+        output1 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
+        output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
         parser = Parser(
             [L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, Disjunction, LeftPar, RightPar, Exist])
         function = self._get_function(parser, 'tris')
-        result = function(hand, output).get_value()
-        self.assertEqual(result, L.true())
+
+        self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
+
+    def test_pair(self):
+        hand1 = tf.constant([4, 9, 4, 2, 4, 7, 4, 6, 4, 9], dtype=tf.float32)
+        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
+        output1 = tf.constant([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
+        output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
+        parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, LeftPar, RightPar, Exist])
+        function = self._get_function(parser, 'pair')
+
+        self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
+
+    def disabled_test_straight(self):
+        hand1 = tf.constant([4, 9, 4, 10, 4, 7, 4, 6, 4, 8], dtype=tf.float32)
+        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
+        output1 = tf.constant([0, 0, 0, 0, 0, 1, 0, 0, 0, 0], dtype=tf.float32)
+        output2 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
+        parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, LeftPar, RightPar, Exist,
+                         Plus, Negation, Numeric])
+        function = self._get_function(parser, 'straight')
+
+        self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
 
     def _get_function(self, parser, label):
         label: str = self.rules[label]
@@ -74,6 +116,16 @@ class TestFol(unittest.TestCase):
         for op in ops:
             ast.insert(op[0], op[1])
         return ast.root.call(self.input_mapping, self.output_mapping)
+
+    def _test_hand_output_combinations(self, function, hand1, hand2, output1, output2) -> None:
+        result1 = function(hand1, output1).get_value()
+        result2 = function(hand2, output1).get_value()
+        result3 = function(hand1, output2).get_value()
+        result4 = function(hand2, output2).get_value()
+        self.assertEqual(result1, L.true())
+        self.assertEqual(result2, L.true())
+        self.assertEqual(result3, L.false())
+        self.assertEqual(result4, L.true())
 
 
 if __name__ == '__main__':

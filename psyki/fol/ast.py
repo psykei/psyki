@@ -106,4 +106,5 @@ class Node:
         for op, local_arg in expression:
             ast.insert(op, local_arg)
         indices = [input_mapping.get(name) for name in vars]
-        return lambda x: operator(local_vars, ast, tf.gather(x, indices, axis=0)).compute()
+        mapping = {name: index for index, name in enumerate(vars)}
+        return lambda x: operator(local_vars, mapping, ast, tf.gather(x, indices, axis=0)).compute()
