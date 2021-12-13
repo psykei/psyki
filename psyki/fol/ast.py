@@ -1,6 +1,7 @@
+from __future__ import annotations
 from typing import Union, Any, Callable
 import tensorflow as tf
-from psyki.logic import LogicOperator, L, LT, LeftPar, RightPar, Implication, LTX, LTY, Exist
+from psyki.logic import LogicOperator, L, LT, LeftPar, RightPar, Implication, LTX, LTY, Exist, Numeric
 
 
 class AST:
@@ -16,9 +17,13 @@ class AST:
             self.tmp_ast.insert(lo, arg)
         # If there is a right par close the tmp ast
         elif lo == RightPar and self.parent_ast is not None:
-            # If the parent ast is not empty append this ast as the rightmost child
+            # If the parent ast is not empty append this ast as the rightmost child of the first incomplete node
             if self.parent_ast.root is not None:
-                self.parent_ast.root.children.append(self.root)
+                incomplete_node = self.parent_ast.root.get_first_incomplete_node()
+                if incomplete_node is None:
+                    self.parent_ast.root.children.append(self.root)
+                else:
+                    incomplete_node.children.append(self.root)
             else:
                 self.parent_ast.root = self.root
             self.parent_ast.tmp_ast = None
@@ -56,6 +61,8 @@ class Node:
             return lambda x: self.operator(x).compute()
         elif self.operator == LTY:
             return lambda _: self.operator(output_mapping[self.arg]).compute()
+        elif self.operator == Numeric:
+            return lambda _: self.operator(self.arg).compute()
         elif self.operator == L:
             return lambda x: self.operator(x[input_mapping[self.arg]]).compute()
         elif self.operator.arity == 0:
@@ -84,6 +91,18 @@ class Node:
             done = node._insert(lo, arg, done)
         if not done:
             self.children.append(Node(lo, arg))
+
+    def get_first_incomplete_node(self) -> Union[None, Node]:
+        if self.operator.arity == 0:
+            return None
+        elif len(self.children) > 0:
+            children_results = [node.get_first_incomplete_node() for node in self.children]
+            for result in children_results:
+                if result is not None:
+                    return result
+            return None if len(self.children) == self.operator.arity else self
+        else:
+            return self
 
     def _insert(self, lo: LogicOperator.__class__, arg: Any, done: bool) -> bool:
         for node in self.children:

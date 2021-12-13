@@ -21,6 +21,7 @@ NEGATION_PRIORITY: int = 300
 NUMERIC_PRIORITY: int = 1000
 PAR_PRIORITY: int = 5000
 PLUS_PRIORITY: int = 400
+PRODUCT_PRIORITY: int = 500
 VARIABLE_PRIORITY: int = 1000
 
 DEFAULT_NAME: str = 'Abstract logic operator'
@@ -40,6 +41,7 @@ LT_EQUIVALENCE_NAME: str = 'Logic tensor equivalence name'
 NEGATION_NAME: str = 'Negation operator'
 NUMERIC_NAME: str = 'Numeric operator'
 PLUS_NAME: str = 'Plus operator'
+PRODUCT_NAME: str = 'Product name'
 VARIABLE_NAME: str = 'Variable'
 
 DEFAULT_REGEX: str = ''
@@ -47,8 +49,9 @@ CLASS_X_REGEX: str = 'X'
 CLASS_Y_REGEX: str = '[a-z]+([A-Z]|[a-z]|[0-9])*'
 CONJUNCTION_REGEX: str = r'\^'
 DISEQUAL_REGEX: str = '!='
-DISJUNCTION_REGEX: str = r'\∨'  # this is a descending wedge not a v!
+DISJUNCTION_REGEX: str = r'\∨'  # this is a descending wedge not a v! #TODO: change ∨ into something more intelligible
 EQUIVALENCE_REGEX: str = '='
+# TODO: change ∃ into something more intelligible
 EXIST_REGEX: str = r'\∃\(([A-Z]([a-z]|[A-Z])*[0-9]*,)*[A-Z]([a-z]|[A-Z])*[0-9]*\:[^,]*\,' \
                    r'([A-Z]([a-z]|[A-Z])*[0-9]*,)*[A-Z]([a-z]|[A-Z])*[0-9]*\)'  # ∃(local vars: expression, vars)
 GREATER_EQUAL_REGEX: str = '>='
@@ -61,6 +64,7 @@ LT_EQUIVALENCE_REGEX: str = r'\|='
 NEGATION_REGEX: str = r'\~'
 NUMERIC_REGEX: str = '[+-]?([0-9]*[.])?[0-9]+'
 PLUS_REGEX: str = '[+]'
+PRODUCT_REGEX: str = r'\*'
 RIGHT_PAR_REGEX: str = r'\)'
 VARIABLE_REGEX: str = r'^(?!' + CLASS_X_REGEX + ')[A-Z]([a-z]|[A-Z])*[0-9]*'
 
@@ -170,13 +174,13 @@ class Numeric(L):
 
     priority: int = NUMERIC_PRIORITY
 
-    def __init__(self, x: float):
+    def __init__(self, x: str):
         """
         Logic variable, 0 is true and 1 is false.
         :param x: is a tensorflow tensor of one element (can be interpreted as a scalar)
         """
 
-        super().__init__(tf.constant(x))
+        super().__init__(tf.constant(float(x)))
         self.name = NUMERIC_NAME
 
     @staticmethod
@@ -210,6 +214,8 @@ class Exist(LogicOperator):
             result = Disjunction(result,
                                  function(tf.concat([self.x, tf.gather(self.x, combination_indices, axis=0)], axis=0))
                                  ).compute()
+            if result.get_value() == L.true():
+                break
         return result
 
     @staticmethod
@@ -422,6 +428,21 @@ class Plus(Op2):
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicOperator._parse(PLUS_REGEX, string)
+
+
+class Product(Op2):
+
+    priority: int = PRODUCT_PRIORITY
+
+    def __init__(self, l1: L, l2: L):
+        super().__init__(l1, l2, PRODUCT_NAME)
+
+    def compute(self) -> L:
+        return L(self.l1.get_value() * self.l2.get_value())
+
+    @staticmethod
+    def parse(string: str) -> tuple[bool, str]:
+        return LogicOperator._parse(PRODUCT_REGEX, string)
 
 
 class LT(L):

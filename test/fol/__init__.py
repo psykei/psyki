@@ -34,9 +34,20 @@ class TestFol(unittest.TestCase):
     }
     rules = get_rules('poker')
 
+    def test_nothing(self):
+        hand1 = tf.constant([4, 5, 4, 10, 3, 7, 2, 6, 1, 8], dtype=tf.float32)
+        hand2 = tf.constant([4, 9, 3, 10, 4, 7, 4, 9, 3, 8], dtype=tf.float32)
+        output1 = tf.constant([1, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
+        output2 = tf.constant([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
+        parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, LeftPar, RightPar, Exist,
+                         Disjunction, Plus, Negation, Numeric, Product])
+        function = self._get_function(parser, 'nothing')
+
+        self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
+
     def test_two_pairs(self):
-        hand1 = tf.constant([4, 9, 4, 2, 4, 2, 4, 6, 4, 9], dtype=tf.float32)
-        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
+        hand1 = tf.constant([4, 9, 2, 2, 4, 2, 4, 6, 3, 9], dtype=tf.float32)
+        hand2 = tf.constant([4, 1, 2, 2, 4, 7, 4, 10, 3, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 1, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Disjunction, Implication, LeftPar,
@@ -56,7 +67,7 @@ class TestFol(unittest.TestCase):
         self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
 
     def test_full(self):
-        hand1 = tf.constant([4, 9, 4, 2, 4, 9, 4, 9, 4, 2], dtype=tf.float32)
+        hand1 = tf.constant([4, 9, 4, 2, 3, 9, 2, 9, 2, 2], dtype=tf.float32)
         hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
@@ -67,8 +78,8 @@ class TestFol(unittest.TestCase):
         self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
 
     def test_poker(self):
-        hand1 = tf.constant([4, 9, 4, 9, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
-        hand2 = tf.constant([4, 9, 4, 5, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
+        hand1 = tf.constant([4, 9, 1, 9, 4, 7, 2, 9, 3, 9], dtype=tf.float32)
+        hand2 = tf.constant([4, 9, 4, 5, 4, 7, 2, 9, 3, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         parser = Parser(
@@ -78,8 +89,8 @@ class TestFol(unittest.TestCase):
         self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
 
     def test_tris(self):
-        hand1 = tf.constant([4, 9, 4, 2, 4, 7, 4, 9, 4, 9], dtype=tf.float32)
-        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
+        hand1 = tf.constant([4, 9, 4, 2, 4, 7, 3, 9, 1, 9], dtype=tf.float32)
+        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 1, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
         parser = Parser(
@@ -89,8 +100,8 @@ class TestFol(unittest.TestCase):
         self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
 
     def test_pair(self):
-        hand1 = tf.constant([4, 9, 4, 2, 4, 7, 4, 6, 4, 9], dtype=tf.float32)
-        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
+        hand1 = tf.constant([4, 9, 4, 2, 4, 7, 4, 6, 2, 9], dtype=tf.float32)
+        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 2, 9], dtype=tf.float32)
         output1 = tf.constant([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, LeftPar, RightPar, Exist])
@@ -98,14 +109,41 @@ class TestFol(unittest.TestCase):
 
         self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
 
-    def disabled_test_straight(self):
-        hand1 = tf.constant([4, 9, 4, 10, 4, 7, 4, 6, 4, 8], dtype=tf.float32)
-        hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
-        output1 = tf.constant([0, 0, 0, 0, 0, 1, 0, 0, 0, 0], dtype=tf.float32)
+    def test_straight(self):
+        hand1 = tf.constant([1, 9, 4, 10, 2, 7, 4, 6, 3, 8], dtype=tf.float32)
+        hand2 = tf.constant([1, 1, 4, 2, 2, 7, 4, 10, 3, 9], dtype=tf.float32)
+        output1 = tf.constant([0, 0, 0, 0, 1, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
         parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, LeftPar, RightPar, Exist,
-                         Plus, Negation, Numeric])
+                         Disjunction, Plus, Negation, Numeric, Product])
         function = self._get_function(parser, 'straight')
+
+        self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
+
+        # Straight is also 10, 11, 12, 13, 1!
+        hand3 = tf.constant([1, 1, 4, 11, 2, 13, 4, 10, 3, 12], dtype=tf.float32)
+        result = function(hand3, output1).get_value()
+        self.assertEqual(result, L.true())
+
+    def test_straight_flush(self):
+        hand1 = tf.constant([4, 9, 4, 10, 4, 7, 4, 6, 4, 8], dtype=tf.float32)
+        hand2 = tf.constant([4, 9, 3, 10, 4, 7, 4, 6, 3, 8], dtype=tf.float32)
+        output1 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32)
+        output2 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
+        parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, LeftPar, RightPar, Exist,
+                         Disjunction, Plus, Negation, Numeric, Product])
+        function = self._get_function(parser, 'straightFlush')
+
+        self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
+
+    def test_royal_flush(self):
+        hand1 = tf.constant([1, 1, 1, 11, 1, 13, 1, 10, 1, 12], dtype=tf.float32)
+        hand2 = tf.constant([1, 9, 1, 11, 1, 13, 1, 10, 1, 12], dtype=tf.float32)
+        output1 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=tf.float32)
+        output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32)
+        parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, LeftPar, RightPar, Exist,
+                         Plus, Negation, Numeric])
+        function = self._get_function(parser, 'royalFlush')
 
         self._test_hand_output_combinations(function, hand1, hand2, output1, output2)
 
