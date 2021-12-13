@@ -76,7 +76,7 @@ class LogicOperator:
     def __init__(self, name: str = DEFAULT_NAME):
         self.name: str = name
 
-    def compute(self) -> L:
+    def compute(self) -> LogicOperator:
         raise Exception('Try to call an abstract method')
 
     def get_value(self) -> Tensor:
