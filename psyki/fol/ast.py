@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Union, Any, Callable
 import tensorflow as tf
-from psyki.logic import LogicOperator, L, LT, LeftPar, RightPar, Implication, LTX, LTY, Exist, Numeric
+from psyki.fol.operators import LogicOperator, L, LT, LeftPar, RightPar, Implication, LTX, LTY, Exist, Numeric
 
 
 class AST:

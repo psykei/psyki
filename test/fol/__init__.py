@@ -1,7 +1,7 @@
 import unittest
 from psyki.fol import Parser
 from psyki.fol.ast import AST
-from psyki.logic import *
+from psyki.fol.operators import *
 import tensorflow as tf
 from test.resources import get_rules
 

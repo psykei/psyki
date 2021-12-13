@@ -1,5 +1,5 @@
 from typing import Iterable, Any
-from psyki.logic import LogicOperator, Exist
+from psyki.fol.operators import Exist, LogicOperator
 
 
 class Parser:
