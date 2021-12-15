@@ -6,7 +6,6 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
 from psyki import Injector
 from psyki.fol import Parser
-from psyki.fol.ast import AST
 from psyki.fol.operators import *
 from test.resources import get_dataset, get_rules
 
@@ -52,16 +51,9 @@ output_mapping = {
         'straightFlush':    tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32),
         'royalFlush':       tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=tf.float32)
     }
-rules = []
-for textual_rule in textual_rules:
-    parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, Implication, LeftPar, RightPar, Exist,
-                     Disjunction, Plus, Negation, Numeric, Product])
-    parsed_rule = parser.parse(textual_rule)
-    ast = AST()
-    for operator in parsed_rule:
-        ast.insert(operator[0], operator[1])
-    rules.append(ast.root.call(input_mapping, output_mapping))
-
+parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar,
+                 Exist, Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication, LessEqual])
+rules = [parser.get_function(rule, input_mapping, output_mapping) for _, rule in textual_rules.items()]
 
 # Build the model
 
@@ -84,6 +76,7 @@ def get_injector():
 
 # Train the model with rules
 injector = get_injector()
+print(injector.predictor.get_config())
 injector.predictor.fit(train_x, train_y, verbose=2, batch_size=5, epochs=EPOCHS)
 
 

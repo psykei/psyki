@@ -1,7 +1,8 @@
 from __future__ import annotations
 from typing import Union, Any, Callable
 import tensorflow as tf
-from psyki.fol.operators import LogicOperator, L, LT, LeftPar, RightPar, Implication, LTX, LTY, Exist, Numeric
+from psyki.fol.operators import LogicOperator, L, LT, LeftPar, RightPar, Implication, LTX, LTY, Exist, Numeric, \
+    DoubleImplication, ReverseImplication
 
 
 class AST:
@@ -70,7 +71,8 @@ class Node:
                 return Node._exist(self.operator, self.arg, im)
         elif self.operator.arity == 1:
             return lambda x: self.operator(self.children[0].call(im, om)(x)).compute()
-        elif self.operator.arity == 2 and (self.operator == Implication):
+        elif self.operator.arity == 2 and (self.operator == Implication or self.operator == DoubleImplication or
+                                           self.operator == ReverseImplication):
             return lambda x, y: self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(y)).compute()
         else:
             return lambda x: self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(x)).compute()

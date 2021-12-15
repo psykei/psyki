@@ -10,6 +10,7 @@ CONJUNCTION_PRIORITY: int = 100
 DEFAULT_PRIORITY: int = -1
 DISEQUAL_PRIORITY: int = 200
 DISJUNCTION_PRIORITY: int = 100
+DOUBLE_IMPLICATION_PRIORITY: int = 0
 EQUIVALENCE_PRIORITY: int = 200
 EXIST_PRIORITY: int = 2000
 GREATER_EQUAL_PRIORITY: int = 200
@@ -22,6 +23,7 @@ NUMERIC_PRIORITY: int = 1000
 PAR_PRIORITY: int = 5000
 PLUS_PRIORITY: int = 400
 PRODUCT_PRIORITY: int = 500
+REVERSE_IMPLICATION_PRIORITY: int = 0
 VARIABLE_PRIORITY: int = 1000
 
 DEFAULT_NAME: str = 'Abstract logic operator'
@@ -30,6 +32,7 @@ CLASS_Y_NAME: str = 'Class y'
 CONJUNCTION_NAME: str = 'Conjunction operator'
 DISEQUAL_NAME: str = 'Disequal operator'
 DISJUNCTION_NAME: str = 'Disjunction operator'
+DOUBLE_IMPLICATION_NAME: str = 'Double implication operator'
 EQUIVALENCE_NAME: str = 'Equivalence operator'
 EXIST_NAME: str = 'Exist operator'
 GREATER_EQUAL_NAME: str = 'Greater or equal operator'
@@ -42,6 +45,7 @@ NEGATION_NAME: str = 'Negation operator'
 NUMERIC_NAME: str = 'Numeric operator'
 PLUS_NAME: str = 'Plus operator'
 PRODUCT_NAME: str = 'Product name'
+REVERSE_IMPLICATION_NAME: str = 'Reverse implication name'
 VARIABLE_NAME: str = 'Variable'
 
 DEFAULT_REGEX: str = ''
@@ -50,6 +54,7 @@ CLASS_Y_REGEX: str = '[a-z]+([A-Z]|[a-z]|[0-9])*'
 CONJUNCTION_REGEX: str = r'\^'
 DISEQUAL_REGEX: str = '!='
 DISJUNCTION_REGEX: str = r'\∨'  # this is a descending wedge not a v! #TODO: change ∨ into something more intelligible
+DOUBLE_IMPLICATION_REGEX: str = '<->'
 EQUIVALENCE_REGEX: str = '='
 # TODO: change ∃ into something more intelligible
 EXIST_REGEX: str = r'\∃\(([A-Z]([a-z]|[A-Z])*[0-9]*,)*[A-Z]([a-z]|[A-Z])*[0-9]*\:[^,]*\,' \
@@ -59,12 +64,13 @@ GREATER_REGEX: str = '>'
 IMPLICATION_REGEX: str = '->'
 LEFT_PAR_REGEX: str = r'\('
 LESS_EQUAL_REGEX: str = '<='
-LESS_REGEX: str = '<'
 LT_EQUIVALENCE_REGEX: str = r'\|='
 NEGATION_REGEX: str = r'\~'
 NUMERIC_REGEX: str = '[+-]?([0-9]*[.])?[0-9]+'
 PLUS_REGEX: str = '[+]'
 PRODUCT_REGEX: str = r'\*'
+REVERSE_IMPLICATION_REGEX: str = r'<-(?!>)'
+LESS_REGEX: str = r'<(?!-)'
 RIGHT_PAR_REGEX: str = r'\)'
 VARIABLE_REGEX: str = r'^(?!' + CLASS_X_REGEX + ')[A-Z]([a-z]|[A-Z])*[0-9]*'
 
@@ -214,8 +220,7 @@ class Exist(LogicOperator):
             result = Disjunction(result,
                                  function(tf.concat([self.x, tf.gather(self.x, combination_indices, axis=0)], axis=0))
                                  ).compute()
-            if result.get_value() == L.true():
-                break
+            # tf.cond(tf.equal(result.get_value(), L.true()), lambda: result, lambda _: _)
         return result
 
     @staticmethod
@@ -254,7 +259,7 @@ class Equivalence(Op2):
         super().__init__(l1, l2, EQUIVALENCE_NAME)
 
     def compute(self) -> L:
-        return L(L.relu(tf.abs(self.l1.x - self.l2.x)))
+        return L(L.fringe(tf.abs(self.l1.x - self.l2.x)))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -283,6 +288,54 @@ class Implication(Op2):
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicOperator._parse(IMPLICATION_REGEX, string)
+
+
+class ReverseImplication(Op2):
+
+    priority: int = REVERSE_IMPLICATION_PRIORITY
+
+    def __init__(self, l1: L, l2: L):
+        """
+        Logic implication between two variable (x -> y)
+
+        x | y | r
+        0 | 0 | 0
+        0 | 1 | 0
+        1 | 0 | 1
+        1 | 1 | 0
+        """
+        super().__init__(l1, l2, REVERSE_IMPLICATION_NAME)
+
+    def compute(self) -> L:
+        return L(L.relu(self.l1.x - self.l2.x))
+
+    @staticmethod
+    def parse(string: str) -> tuple[bool, str]:
+        return LogicOperator._parse(REVERSE_IMPLICATION_REGEX, string)
+
+
+class DoubleImplication(Op2):
+
+    priority: int = DOUBLE_IMPLICATION_PRIORITY
+
+    def __init__(self, l1: L, l2: L):
+        """
+        Logic implication between two variable (x <-> y)
+
+        x | y | r
+        0 | 0 | 0
+        0 | 1 | 1
+        1 | 0 | 1
+        1 | 1 | 0
+        """
+        super().__init__(l1, l2, DOUBLE_IMPLICATION_NAME)
+
+    def compute(self) -> L:
+        return L(L.relu(tf.abs(self.l2.x - self.l1.x)))
+
+    @staticmethod
+    def parse(string: str) -> tuple[bool, str]:
+        return LogicOperator._parse(DOUBLE_IMPLICATION_REGEX, string)
 
 
 class Negation(Op1):
@@ -363,7 +416,7 @@ class Greater(Op2):
         super().__init__(l1, l2, GREATER_NAME)
 
     def compute(self) -> L:
-        return L(tf.minimum(GreaterEqual(self.l1, self.l2).compute(), Disequal(self.l1, self.l2).compute()))
+        return Conjunction(GreaterEqual(self.l1, self.l2).compute(), Disequal(self.l1, self.l2).compute()).compute()
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -378,7 +431,7 @@ class Disequal(Op2):
         super().__init__(l1, l2, DISEQUAL_NAME)
 
     def compute(self) -> L:
-        return L(L.false() - L.fringe(self.l1.x - self.l2.x))
+        return Negation(Equivalence(self.l1, self.l2).compute()).compute()
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -393,7 +446,7 @@ class Less(Op2):
         super().__init__(l1, l2, LESS_NAME)
 
     def compute(self) -> L:
-        return Conjunction(GreaterEqual(self.l1, self.l2).compute(), Disequal(self.l1, self.l2).compute()).compute()
+        return Negation(GreaterEqual(self.l1, self.l2).compute()).compute()
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -489,7 +542,7 @@ class LTEquivalence(Op2):
         """
         xy = tf.stack([self.l1.x, self.l2.x], axis=1)
         element_wise_equivalence = tf.map_fn(lambda x: Equivalence(L(x[0]), L(x[1])).compute().get_value(), xy)
-        return L(tf.reduce_max(element_wise_equivalence))
+        return L(L.fringe(tf.reduce_max(element_wise_equivalence)))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:

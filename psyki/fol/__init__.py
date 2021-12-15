@@ -1,4 +1,5 @@
 from typing import Iterable, Any
+from psyki.fol.ast import AST
 from psyki.fol.operators import Exist, LogicOperator
 
 
@@ -23,6 +24,13 @@ class Parser:
             if old_string == string:
                 raise Exception('Parser cannot parse the provided string.')
         return results
+
+    def get_function(self, rule, input_mapping, output_mapping):
+        terms = self.parse(rule)
+        tree = AST()
+        for term in terms:
+            tree.insert(term[0], term[1])
+        return tree.root.call(input_mapping, output_mapping)
 
     def _get_exist_value(self, string: str) -> Any:
         # ∃(local vars: expression, vars)

@@ -1,6 +1,7 @@
 from typing import Callable
-from tensorflow import Tensor
 import tensorflow as tf
+from tensorflow import Tensor
+from tensorflow.keras.layers import Lambda
 
 
 class Injector:
@@ -16,21 +17,26 @@ class Injector:
         self.use_knowledge = True
         self.rules = rules
         self.activation_function = self.predictor.layers[-1].activation
-        self.predictor.layers[-1].activation = self._altered_activation_function
+        # self.predictor.layers[-1].activation = self._altered_activation_function
+        self.predictor.add(Lambda(self._altered_activation_function, output_shape=self.predictor.layers[-1].output))
 
-    def _altered_activation_function(self, layer_output: Tensor) -> Tensor:
+    def _altered_activation_function(self, layer_output) -> None:
         net_input = self.predictor.layers[0].input
         iteration_input = tf.concat((net_input, layer_output), axis=1)
+        input_len = self.predictor.layers[0].input.shape[1]
         if self.use_knowledge:
-            result = tf.map_fn(self._cost_function, iteration_input)
+            layer_output = tf.scan(self._cost_function,
+                                   elems=iteration_input,
+                                   initializer=tf.zeros((input_len, ), dtype=tf.float32))
+            return self.activation_function(layer_output)
         else:
-            result = self.activation_function(layer_output)
-        return result
+            return layer_output
 
-    def _cost_function(self, x_and_y: Tensor) -> Tensor:
-        x, y = x_and_y[0], x_and_y[1]
-        cost_tensor = tf.concat([expression(x, y).get_value() for expression in self.rules], axis=0)
-        return self.activation_function(y + cost_tensor)
+    def _cost_function(self, accumulator, x_and_y) -> None:
+        input_len = self.predictor.layers[0].input.shape[1]
+        x, y = x_and_y[:input_len], x_and_y[input_len:]
+        cost_tensor = tf.stack([expression(x, y).get_value() for expression in self.rules], axis=0)
+        return accumulator + (y + cost_tensor)
 
     @property
     def knowledge(self) -> bool:
