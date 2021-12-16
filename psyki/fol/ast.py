@@ -65,7 +65,7 @@ class Node:
         elif self.operator == Numeric:
             return lambda _: self.operator(self.arg).compute()
         elif self.operator == L:
-            return lambda x: self.operator(x[input_mapping[self.arg]]).compute()
+            return lambda x: self.operator(x[:, input_mapping[self.arg]]).compute()
         elif self.operator.arity == 0:
             if self.operator == Exist:
                 return Node._exist(self.operator, self.arg, im)
@@ -128,4 +128,4 @@ class Node:
             ast.insert(op, local_arg)
         indices = [input_mapping.get(name) for name in vars]
         mapping = {name: index for index, name in enumerate(vars)}
-        return lambda x: operator(local_vars, mapping, ast, tf.gather(x, indices, axis=0)).compute()
+        return lambda x: operator(local_vars, mapping, ast, tf.gather(x, indices, axis=1)).compute()

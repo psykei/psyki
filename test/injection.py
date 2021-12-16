@@ -1,17 +1,21 @@
 import numpy as np
+from tensorflow.keras import Input
+from tensorflow.keras.activations import softmax
+from tensorflow.keras.layers import Dense
 from sklearn.preprocessing import OneHotEncoder
 from tensorflow.python.framework.ops import disable_eager_execution
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.optimizers import Adam
+from keras.optimizer_v2.adam import Adam
 from psyki import Injector
 from psyki.fol import Parser
 from psyki.fol.operators import *
 from test.resources import get_dataset, get_rules
 
 SEED: int = 123
-EPOCHS: int = 200
+EPOCHS: int = 50
 NEURONS: int = 20
+BATCH_SIZE: int = 5
+
+# disable_eager_execution()
 
 poker_training = get_dataset('poker-training')
 poker_testing = get_dataset('poker-testing')
@@ -56,28 +60,21 @@ parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, ReverseIm
 rules = [parser.get_function(rule, input_mapping, output_mapping) for _, rule in textual_rules.items()]
 
 # Build the model
-
-disable_eager_execution()
+optimizer = Adam(learning_rate=0.001)
 
 
 def get_injector():
-    optimizer = Adam(learning_rate=0.001)
-    model = Sequential()
-    model.add(Dense(NEURONS, input_shape=(10,), activation='relu', name='input_layer'))
-    model.add(Dense(NEURONS, activation='relu', name='hidden_layer'))
-    model.add(Dense(10, activation='softmax', name='output_layer'))
-    print('Neural Network Model Summary: ')
-    print(model.summary())
-    injector = Injector(model)
+    input = Input((10,))
+    x = Dense(NEURONS, activation='relu', name='input_layer')(input)
+    x = Dense(NEURONS, activation='relu', name='hidden_layer')(x)
+    x = Dense(10, activation='softmax', name='output_layer')(x)
+    injector = Injector(x, input, softmax)
     injector.inject(rules)
     injector.predictor.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    print('Neural Network With Knowledge Model Summary: ')
+    print(injector.predictor.summary())
+    # plot_model(injector.predictor)
     return injector
-
-
-# Train the model with rules
-injector = get_injector()
-print(injector.predictor.get_config())
-injector.predictor.fit(train_x, train_y, verbose=2, batch_size=5, epochs=EPOCHS)
 
 
 def class_accuracy(_model, _x, _y):
@@ -89,6 +86,10 @@ def class_accuracy(_model, _x, _y):
     return accuracy
 
 
+# Train the model with rules
+injector = get_injector()
+injector.predictor.fit(train_x, train_y, verbose=1, batch_size=BATCH_SIZE, epochs=EPOCHS)
+
 # Disable rules
 injector.knowledge = False
 results = injector.predictor.evaluate(test_x, test_y)
@@ -97,3 +98,19 @@ c_accuracy = class_accuracy(injector.predictor, test_x, test_y)
 print('Final test set loss after removing rules: {:4f}'.format(results[0]))
 print('Final test set accuracy after removing rules: {:4f}'.format(results[1]))
 print(c_accuracy)
+
+
+model = None
+model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+print('Classic Neural Network Model Summary: ')
+print(injector.predictor.summary())
+
+model.fit(train_x, train_y, verbose=1, batch_size=BATCH_SIZE, epochs=EPOCHS)
+results = injector.predictor.evaluate(test_x, test_y)
+c_accuracy = class_accuracy(injector.predictor, test_x, test_y)
+
+print('Final test set loss: {:4f}'.format(results[0]))
+print('Final test set accuracy: {:4f}'.format(results[1]))
+print(c_accuracy)
+
+

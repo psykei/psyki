@@ -216,11 +216,11 @@ class Exist(LogicOperator):
         mapping = self.outer_mapping | self.inner_mapping
         function = self.ast.root.call(mapping)
         result = L(L.false())
-        for combination_indices in combinations(range(0, self.x.shape[0]), len(self.inner_mapping.keys())):
+        combs = combinations(range(0, self.x.shape[1]), len(self.inner_mapping.keys()))
+        for combination_indices in combs:
             result = Disjunction(result,
-                                 function(tf.concat([self.x, tf.gather(self.x, combination_indices, axis=0)], axis=0))
+                                 function(tf.concat([self.x, tf.gather(self.x, combination_indices, axis=1)], axis=1))
                                  ).compute()
-            # tf.cond(tf.equal(result.get_value(), L.true()), lambda: result, lambda _: _)
         return result
 
     @staticmethod
@@ -540,8 +540,10 @@ class LTEquivalence(Op2):
         """
         :return: 'the most false value' (the maximum) among the partial results
         """
-        xy = tf.stack([self.l1.x, self.l2.x], axis=1)
-        element_wise_equivalence = tf.map_fn(lambda x: Equivalence(L(x[0]), L(x[1])).compute().get_value(), xy)
+        # xy = tf.stack([self.l1.x, self.l2.x], axis=1)
+        xy = tf.stack([self.l1.x,
+                       tf.tile(tf.reshape(self.l2.x, [1, self.l2.x.shape[0]]), [tf.shape(self.l1.x)[0], 1])], axis=1)
+        element_wise_equivalence = tf.map_fn(lambda x: Equivalence(L(x[0, :]), L(x[1, :])).compute().get_value(), xy)
         return L(L.fringe(tf.reduce_max(element_wise_equivalence)))
 
     @staticmethod
