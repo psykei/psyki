@@ -1,6 +1,5 @@
 import unittest
 from random import randint
-
 import numpy as np
 from psyki.fol import Parser
 from psyki.fol.operators import *
