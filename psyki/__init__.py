@@ -40,7 +40,7 @@ class Injector:
     def _cost_function(self, x_and_y: Tensor) -> Tensor:
         input_len = self.input.shape[1]
         x, y = x_and_y[:, :input_len], x_and_y[:, input_len:]
-        cost_tensor = tf.stack([expression(x, y).get_value() for expression in self.rules], axis=0)
+        cost_tensor = tf.stack([expression(x, y).get_value() for expression in self.rules], axis=1)
         return y + cost_tensor
 
     @property

@@ -36,7 +36,7 @@ rules = get_rules('poker')
 class TestFol(unittest.TestCase):
 
     def test_nothing(self):
-        hand1 = tf.constant([4, 5, 4, 10, 3, 7, 2, 6, 1, 8], dtype=tf.float32)
+        hand1 = tf.constant([2, 6, 2, 1, 4, 13, 2, 4, 4, 9], dtype=tf.float32)
         hand2 = tf.constant([4, 9, 3, 10, 4, 7, 4, 9, 3, 8], dtype=tf.float32)
         output1 = tf.constant([1, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
@@ -184,12 +184,11 @@ class TestFol(unittest.TestCase):
 
 class TestFolOnDataset(unittest.TestCase):
 
-    def disabled_test_fol(self):
+    def test_fol(self):
         ordered_rules = get_ordered_rules('poker')
         poker_training = get_dataset('poker-training')
         # random_indices = [randint(0, poker_training.shape[0] - 1) for _ in range(0, 1000)]
-        random_indices = range(5, 17)
-        poker_training = poker_training[random_indices, :]
+        # poker_training = poker_training[random_indices, :]
         parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar,
                          Exist, Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication, LessEqual])
         functions = [parser.get_function(rule, input_mapping, output_mapping) for rule in ordered_rules]
