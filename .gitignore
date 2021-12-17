@@ -1,5 +1,3 @@
-# Created by https://www.toptal.com/developers/gitignore/api/python
-# Edit at https://www.toptal.com/developers/gitignore?templates=python
 VERSION
 
 .idea/
@@ -155,3 +153,8 @@ dmypy.json
 
 # File ONNX
 *.onnx
+
+# Experiments
+test/experiments/models
+test/experiments/statistics
+test/experiments/img
