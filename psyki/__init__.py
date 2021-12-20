@@ -1,4 +1,5 @@
 from typing import Callable
+import keras
 import tensorflow as tf
 from keras import Model
 from keras.layers import Concatenate, Lambda
@@ -7,7 +8,7 @@ from tensorflow import Tensor
 
 class Injector:
 
-    def __init__(self, predictor, input, activation_function: Callable):
+    def __init__(self, predictor, input, activation_function: Callable = None):
         self.original_predictor = predictor
         self.predictor = predictor
         self.input = input
@@ -21,9 +22,8 @@ class Injector:
         self.use_knowledge = True
         self.rules = rules
         self.active_rule = active_rule
-        # self.original_predictor.layers[-1].activation = self._knowledge_function
-        x = Concatenate(axis=1, name='Concatenate layer')([self.input, self.original_predictor])
-        x = Lambda(self._knowledge_function, (10,), name='Knowledge layer')(x)
+        x = Concatenate(axis=1, name='Concatenate_layer')([self.input, self.original_predictor])
+        x = Lambda(self._knowledge_function, (10,), name='Knowledge_layer')(x)
         self.predictor = Model(self.input, x)
 
     def _knowledge_function(self, layer_output: Tensor) -> Tensor:
@@ -38,10 +38,14 @@ class Injector:
         x, y = x_and_y[:, :input_len], x_and_y[:, input_len:]
         cost_tensor = tf.stack([expression(x, y).get_value() for expression in self.rules], axis=1)
 
-        # active = tf.stack([expression(x).get_value() for expression in self.active_rule], axis=1)
-        # only_one_active = Injector._process_active_rule(active)
+        return y + cost_tensor/(y.shape[1])
 
-        return y + cost_tensor/y.shape[1]  # * only_one_active)
+    def save(self, file: str):
+        Model(inputs=self.predictor.input, outputs=self.predictor.layers[-3].output).save(file)
+
+    @staticmethod
+    def load(file):
+        return keras.models.load_model(file, custom_objects={'_knowledge_function': Injector._knowledge_function})
 
     # Not used
     @staticmethod
