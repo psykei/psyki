@@ -31,7 +31,8 @@ class TestFol(unittest.TestCase):
         output2 = tf.constant([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         function = POKER_RULES[rule_index['nothing']]
 
-        self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
+        # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
+        self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
     def test_two_pairs(self):
         hand1 = tf.constant([4, 9, 2, 2, 4, 2, 4, 6, 3, 9], dtype=tf.float32)
@@ -58,8 +59,8 @@ class TestFol(unittest.TestCase):
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         function = POKER_RULES[rule_index['full']]
 
-        self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
-
+        # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
+        self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
     def test_poker(self):
         hand1 = tf.constant([4, 9, 1, 9, 4, 7, 2, 9, 3, 9], dtype=tf.float32)
         hand2 = tf.constant([4, 9, 4, 5, 4, 7, 2, 9, 3, 9], dtype=tf.float32)
@@ -67,7 +68,8 @@ class TestFol(unittest.TestCase):
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         function = POKER_RULES[rule_index['poker']]
 
-        self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
+        # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
+        self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
     def test_tris(self):
         hand1 = tf.constant([4, 9, 4, 2, 4, 7, 3, 9, 1, 9], dtype=tf.float32)
@@ -119,7 +121,8 @@ class TestFol(unittest.TestCase):
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32)
         function = POKER_RULES[rule_index['royalFlush']]
 
-        self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
+        # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
+        self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
     def _test_reverse_implication_hand_output_combinations(self, function, hand1, hand2, output1, output2) -> None:
         result1, result2, result3, result4 = self._get_combination_values(function, hand1, hand2, output1, output2)
