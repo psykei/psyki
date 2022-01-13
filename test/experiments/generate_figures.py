@@ -105,7 +105,7 @@ def box_plot(data, positions, ax, edge_color, fill_color=None):
     return bp
 
 
-def classes_distribution(files: list[str], names: list[str], col_name: str = 'knowledge_classes', class_indices: list[int] = None, fig_name: str = 'default', title: str = 'default', edge_colors: list[str] = None, fill_colors: list[str] = None):
+def classes_distribution(files: list[str], names: list[str], col_name: str = 'classes', class_indices: list[int] = None, fig_name: str = 'default', title: str = 'default', edge_colors: list[str] = None, fill_colors: list[str] = None):
     """
     Generate a plot with the accuracy class distribution of networks
     """
@@ -132,12 +132,13 @@ def classes_distribution(files: list[str], names: list[str], col_name: str = 'kn
     plt.cla()
 
 
-experiments_file_names = ['test_results_classic', 'test_results_R1', 'test_results_R2']
-short_names = ['classic', 'R1', 'R2']
+experiments_file_names = ['test_results_classic', 'test_results_R0', 'test_results_R1', 'test_results_R2']
+short_names = ['classic', 'R0', 'R1', 'R2']
 title = 'class accuracy distributions'
-colors1 = ['red','blue', 'darkgreen', 'darkorange']
+colors1 = ['red', 'blue', 'darkgreen', 'darkorange']
 colors2 = ['salmon', 'cyan', 'lightgreen', 'bisque']
-classes_distribution(experiments_file_names, short_names, 'knowledge_classes', [0,1,2,3,4], 'classes_distribution1',
+
+classes_distribution(experiments_file_names, short_names, 'classes', [0,1,2,3,4], 'classes-distribution1',
                      title, colors1, colors2)
-classes_distribution(experiments_file_names, short_names, 'knowledge_classes', [5,6,7,8,9], 'classes_distribution2',
+classes_distribution(experiments_file_names, short_names, 'classes', [5,6,7,8,9], 'classes-distribution2',
                      title, colors1, colors2)

@@ -53,10 +53,9 @@ CLASS_X_REGEX: str = 'X'
 CLASS_Y_REGEX: str = '[a-z]+([A-Z]|[a-z]|[0-9])*'
 CONJUNCTION_REGEX: str = r'\^'
 DISEQUAL_REGEX: str = '!='
-DISJUNCTION_REGEX: str = r'\∨'  # this is a descending wedge not a v! #TODO: change ∨ into something more intelligible
+DISJUNCTION_REGEX: str = r'\∨'  # this is \vee not a v!
 DOUBLE_IMPLICATION_REGEX: str = '<->'
 EQUIVALENCE_REGEX: str = '='
-# TODO: change ∃ into something more intelligible
 EXIST_REGEX: str = r'\∃\(([A-Z]([a-z]|[A-Z])*[0-9]*,)*[A-Z]([a-z]|[A-Z])*[0-9]*\:[^,]*\,' \
                    r'([A-Z]([a-z]|[A-Z])*[0-9]*,)*[A-Z]([a-z]|[A-Z])*[0-9]*\)'  # ∃(local vars: expression, vars)
 GREATER_EQUAL_REGEX: str = '>='
@@ -406,7 +405,7 @@ class Disjunction(Op2):
 
     def __init__(self, l1: L, l2: L):
         """
-        Logic disjunction between two variables (x ∨ y, this is a descending wedge not a v!).
+        Logic disjunction between two variables (x ∨ y, this is \vee not v!).
         """
         super().__init__(l1, l2, DISJUNCTION_NAME)
 
@@ -563,16 +562,13 @@ class LTEquivalence(Op2):
 
     def compute(self) -> L:
         """
-        :return: mean square error (mse)
+        :return: the maximum element wise equivalence value between the two tensors.
         """
-        # xy = tf.stack([self.l1.x, self.l2.x], axis=1)
         xy = tf.stack([self.l1.x,
                        tf.tile(tf.reshape(self.l2.x, [1, self.l2.x.shape[0]]), [tf.shape(self.l1.x)[0], 1])], axis=1)
         element_wise_equivalence = tf.map_fn(lambda x: Equivalence(L(x[0, :]), L(x[1, :])).compute().get_value(), xy)
-        # squares = element_wise_equivalence ** 2
-        # mse = tf.reduce_sum(squares, axis=1)
-        mse = tf.reduce_max(element_wise_equivalence, axis=1)
-        return L(L.reverse_relu(mse))
+        result = tf.reduce_max(element_wise_equivalence, axis=1)
+        return L(L.reverse_relu(result))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:

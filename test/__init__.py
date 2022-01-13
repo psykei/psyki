@@ -1,13 +1,13 @@
 import os
 import numpy as np
-import random
+import tensorflow as tf
 from keras.callbacks import CSVLogger, ModelCheckpoint
 from keras.layers import Dense
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
+from tensorflow import Tensor
 from psyki.fol import Parser
-from psyki.fol.operators import *
 from test.experiments import statistics
 from test.experiments import models
 from test.resources import get_rules, get_dataset
@@ -36,8 +36,7 @@ POKER_OUTPUT_MAPPING = {
         'straightFlush':    tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32),
         'royalFlush':       tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=tf.float32)
     }
-_parser = Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar, Implication,
-                 Exist, Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication, LessEqual, Pass])
+_parser = Parser.extended_parser()
 POKER_RULES = [_parser.get_function(rule, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING)
                for _, rule in get_rules('poker').items()]
 
@@ -67,12 +66,8 @@ def get_processed_dataset(name: str, validation: float = 1.0):
     poker_training = get_dataset(name + '-training')
     poker_testing = get_dataset(name + '-testing')
     if validation < 1:
-        # random.seed(123)
-        # indices = random.sample(range(int(poker_testing.shape[0])), int(poker_testing.shape[0]*validation))
-        # poker_testing = poker_testing[indices, :]
-
-        _, poker_testing = train_test_split(poker_testing, test_size=validation, random_state=123, stratify=poker_testing[:, -1])
-
+        _, poker_testing = train_test_split(poker_testing, test_size=validation, random_state=123,
+                                            stratify=poker_testing[:, -1])
     train_x = poker_training[:, :-1]
     train_y = poker_training[:, -1]
     test_x = poker_testing[:, :-1]
@@ -87,6 +82,9 @@ def get_processed_dataset(name: str, validation: float = 1.0):
 
 
 def get_mlp(input: Tensor, output: int, layers: int, neurons: int, activation_function, last_activation_function):
+    """
+    Generate a NN with the given parameters
+    """
     x = Dense(neurons, activation=activation_function, name='L_1')(input)
     for i in range(2, layers):
         x = Dense(neurons, activation=activation_function, name='L_' + str(i))(x)

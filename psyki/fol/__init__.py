@@ -1,6 +1,6 @@
 from typing import Iterable, Any
 from psyki.fol.ast import AST
-from psyki.fol.operators import Exist, LogicOperator
+from psyki.fol.operators import *
 
 
 class Parser:
@@ -22,7 +22,7 @@ class Parser:
                     results.append((op, value))
                     break
             if old_string == string:
-                raise Exception('Parser cannot parse the provided string.')
+                raise Exception('Parser cannot parse the provided string: ' + string)
         return results
 
     def get_function(self, rule, input_mapping, output_mapping):
@@ -42,3 +42,15 @@ class Parser:
         vars, string = Exist.parse_vars(string)
         vars = [var for var in vars.split(',')]
         return local_vars, expression, vars
+
+    @staticmethod
+    def extended_parser():
+        return Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar,
+                       Implication, Exist, Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication,
+                       LessEqual, Pass])
+
+    @staticmethod
+    def default_parser():
+        return Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar,
+                       Implication, Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication,
+                       LessEqual, Pass, LessEqual, Greater])

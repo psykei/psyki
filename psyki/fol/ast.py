@@ -58,7 +58,9 @@ class Node:
 
     def call(self, input_mapping: dict, output_mapping: dict = None) -> Callable:
         im, om = input_mapping, output_mapping
-        if self.operator == LTX:
+        if self.operator == Pass:
+            return lambda x, y: self.operator(L(x), LTX(y)).compute()
+        elif self.operator == LTX:
             return lambda x: self.operator(x).compute()
         elif self.operator == LTY:
             return lambda _: self.operator(output_mapping[self.arg]).compute()
@@ -72,7 +74,7 @@ class Node:
         elif self.operator.arity == 1:
             return lambda x: self.operator(self.children[0].call(im, om)(x)).compute()
         elif self.operator.arity == 2 and (self.operator == Implication or self.operator == DoubleImplication or
-                                           self.operator == ReverseImplication or self.operator == Pass):
+                                           self.operator == ReverseImplication):
             return lambda x, y: self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(y)).compute()
         else:
             return lambda x: self.operator(self.children[0].call(im, om)(x), self.children[1].call(im, om)(x)).compute()
