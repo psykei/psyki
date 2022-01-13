@@ -132,6 +132,23 @@ class Op1(LogicOperator):
         super().__init__(name)
 
 
+class Pass(Op2):
+    priority: int = IMPLICATION_PRIORITY
+
+    def __init__(self, l1: L, l2: L):
+        """
+        return always 0
+        """
+        super().__init__(l1, l2, 'Pass')
+
+    def compute(self) -> L:
+        return L(tf.zeros(tf.shape(self.l2.get_value())[0]))
+
+    @staticmethod
+    def parse(string: str) -> tuple[bool, str]:
+        return LogicOperator._parse(r'/', string)
+
+
 class L(LogicOperator):
 
     priority: int = VARIABLE_PRIORITY
@@ -168,6 +185,10 @@ class L(LogicOperator):
         return L.relu(L.reverse_relu(x))
 
     @staticmethod
+    def wide_fringe(x: Tensor):
+        return tf.minimum(L.false(), tf.maximum(x, -L.false()))
+
+    @staticmethod
     def true() -> Tensor:
         return constant(0)
 
@@ -196,6 +217,10 @@ class Numeric(L):
 
 class Exist(LogicOperator):
 
+    """
+    Just a syntactic sugar to shorten rules length:
+    try all variable combinations and return the nearest to true.
+    """
     priority: int = EXIST_PRIORITY
     _head_regex: str = r'\∃\('
     _local_vars_regex: str = r'([A-Z]([a-z]|[A-Z])*[0-9]*,)*[A-Z]([a-z]|[A-Z])*[0-9]*\:'
@@ -259,7 +284,7 @@ class Equivalence(Op2):
         super().__init__(l1, l2, EQUIVALENCE_NAME)
 
     def compute(self) -> L:
-        return L(L.fringe(tf.abs(self.l1.x - self.l2.x)))
+        return L(L.reverse_relu(tf.abs(self.l1.x - self.l2.x)))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -331,7 +356,7 @@ class DoubleImplication(Op2):
         super().__init__(l1, l2, DOUBLE_IMPLICATION_NAME)
 
     def compute(self) -> L:
-        return L(L.relu(tf.abs(self.l2.x - self.l1.x)))
+        return L(L.reverse_relu(tf.abs(self.l1.x - self.l2.x)))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -538,13 +563,16 @@ class LTEquivalence(Op2):
 
     def compute(self) -> L:
         """
-        :return: 'the most false value' (the maximum) among the partial results
+        :return: mean square error (mse)
         """
         # xy = tf.stack([self.l1.x, self.l2.x], axis=1)
         xy = tf.stack([self.l1.x,
                        tf.tile(tf.reshape(self.l2.x, [1, self.l2.x.shape[0]]), [tf.shape(self.l1.x)[0], 1])], axis=1)
         element_wise_equivalence = tf.map_fn(lambda x: Equivalence(L(x[0, :]), L(x[1, :])).compute().get_value(), xy)
-        return L(L.fringe(tf.reduce_max(element_wise_equivalence, axis=1)))
+        # squares = element_wise_equivalence ** 2
+        # mse = tf.reduce_sum(squares, axis=1)
+        mse = tf.reduce_max(element_wise_equivalence, axis=1)
+        return L(L.reverse_relu(mse))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:

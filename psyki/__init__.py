@@ -8,7 +8,7 @@ from tensorflow import Tensor
 
 class Injector:
 
-    def __init__(self, predictor, input, activation_function: Callable = None):
+    def __init__(self, predictor, input, activation_function: Callable = None, gamma: float = 1.):
         self.original_predictor = predictor
         self.predictor = predictor
         self.input = input
@@ -16,14 +16,14 @@ class Injector:
         self.rules: list = []
         self.active_rule: list = []
         self.activation_function = activation_function
+        self.gamma = gamma
 
-    # Todo: ponder if it is reasonable to add a constant tensor for weighting
     def inject(self, rules: list[Callable], active_rule: list[Callable] = None) -> None:
         self.use_knowledge = True
         self.rules = rules
         self.active_rule = active_rule
-        x = Concatenate(axis=1, name='Concatenate_layer')([self.input, self.original_predictor])
-        x = Lambda(self._knowledge_function, (10,), name='Knowledge_layer')(x)
+        x = Concatenate(axis=1, name='Concatenate')([self.input, self.original_predictor])
+        x = Lambda(self._knowledge_function, (10,), name='Knowledge')(x)
         self.predictor = Model(self.input, x)
 
     def _knowledge_function(self, layer_output: Tensor) -> Tensor:
@@ -37,27 +37,14 @@ class Injector:
         input_len = self.input.shape[1]
         x, y = x_and_y[:, :input_len], x_and_y[:, input_len:]
         cost_tensor = tf.stack([expression(x, y).get_value() for expression in self.rules], axis=1)
-
-        return y + cost_tensor/(y.shape[1])
+        result = y + (cost_tensor/self.gamma)
+        return result
 
     def save(self, file: str):
-        Model(inputs=self.predictor.input, outputs=self.predictor.layers[-3].output).save(file)
+        Model(inputs=self.predictor.net_input, outputs=self.predictor.layers[-3].output).save(file)
 
-    @staticmethod
-    def load(file):
-        return keras.models.load_model(file, custom_objects={'_knowledge_function': Injector._knowledge_function})
-
-    # Not used
-    @staticmethod
-    def _process_active_rule(tensor: Tensor) -> Tensor:
-        zero_to_two = tf.where(tf.equal(tensor, 0.0), 2.0, tensor)
-        one_to_zero = tf.where(tf.equal(zero_to_two, 1.0), 0.0, zero_to_two)
-        give_priority = one_to_zero * tf.cast(tf.range(0, one_to_zero.shape[1]), dtype=tf.float32)
-        indices_axis_1 = tf.cast(tf.argmax(give_priority, axis=1), dtype=tf.int32)
-        indices = tf.stack([tf.cast(tf.range(0, tf.shape(tensor)[0]), dtype=tf.int32), indices_axis_1], axis=1)
-        ones = tf.where(tf.not_equal(tensor, 1.0), 1.0, tensor)
-        zeros = tf.zeros(tf.shape(tensor)[0])
-        return tf.tensor_scatter_nd_update(ones, indices, zeros)
+    def load(self, file):
+        return keras.models.load_model(file, custom_objects={'_knowledge_function': self._knowledge_function})
 
     @property
     def knowledge(self) -> bool:

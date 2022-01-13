@@ -155,6 +155,7 @@ dmypy.json
 *.onnx
 
 # Experiments
-test/experiments/models/*.h5
-test/experiments/statistics/*.csv
-test/experiments/img/*.png
+test/experiments/models/old
+test/experiments/statistics/old
+*.png
+*.svg
