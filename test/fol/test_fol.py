@@ -154,7 +154,7 @@ class TestFol(unittest.TestCase):
 class TestFolOnDataset(unittest.TestCase):
 
     def test_fol(self):
-        poker_training = get_dataset('poker-training')
+        poker_training = get_dataset('poker-training')[10:20,:]
         functions = POKER_RULES
         train_x = poker_training[:, :-1]
         train_y = poker_training[:, -1]

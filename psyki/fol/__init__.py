@@ -45,12 +45,11 @@ class Parser:
 
     @staticmethod
     def extended_parser():
-        return Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar,
-                       Implication, Exist, Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication,
-                       LessEqual, Pass])
+        return Parser([L, LTX, LTY, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar, Implication, Exist,
+                       Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication, LessEqual, Pass, LTEquivalence])
 
     @staticmethod
     def default_parser():
-        return Parser([L, LTX, LTY, LTEquivalence, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar,
-                       Implication, Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication,
-                       LessEqual, Pass, LessEqual, Greater])
+        return Parser([L, LTX, LTY, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar, Implication,
+                       Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication, LessEqual, Pass,
+                       LessEqual, Greater, LTEquivalence])

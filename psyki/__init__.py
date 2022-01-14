@@ -23,7 +23,7 @@ class Injector:
         self.rules = rules
         self.active_rule = active_rule
         x = Concatenate(axis=1, name='Concatenate')([self.input, self.original_predictor])
-        x = Lambda(self._knowledge_function, (10,), name='Knowledge')(x)
+        x = Lambda(self._knowledge_function, self.original_predictor, name='Knowledge')(x)
         self.predictor = Model(self.input, x)
 
     def _knowledge_function(self, layer_output: Tensor) -> Tensor:

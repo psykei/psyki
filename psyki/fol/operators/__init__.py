@@ -551,7 +551,6 @@ class LTY(LT):
 
 
 class LTEquivalence(Op2):
-
     priority: int = EQUIVALENCE_PRIORITY
 
     def __init__(self, l1: LT, l2: LT):
@@ -565,7 +564,8 @@ class LTEquivalence(Op2):
         :return: the maximum element wise equivalence value between the two tensors.
         """
         xy = tf.stack([self.l1.x,
-                       tf.tile(tf.reshape(self.l2.x, [1, self.l2.x.shape[0]]), [tf.shape(self.l1.x)[0], 1])], axis=1)
+                       tf.tile(tf.reshape(self.l2.x, [1, self.l2.x.shape[0]]), [tf.shape(self.l1.x)[0], 1])],
+                      axis=1)
         element_wise_equivalence = tf.map_fn(lambda x: Equivalence(L(x[0, :]), L(x[1, :])).compute().get_value(), xy)
         result = tf.reduce_max(element_wise_equivalence, axis=1)
         return L(L.reverse_relu(result))
