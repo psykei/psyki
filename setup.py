@@ -63,6 +63,63 @@ class RunExperiments(distutils.cmd.Command):
             model.summary()
             train_network(model, train_x, train_y, test_x, test_y, batch_size=self.batch_size, epochs=self.epochs, file=file)
 
+            # Save the base network without knowledge layer
+            if self.knowledge.lower() == 'y':
+                model = Model(inputs=model.net_input, outputs=model.layers[-3].output)
+                model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+                model.save(file)
+
+
+class TestAnalysis(distutils.cmd.Command):
+    description = 'run evaluation of neural networks on test set'
+    user_options = [('filename=', 'f', 'file name of the neural networks without the experiment number'),
+                    ('min=', 'm', 'lowest experiment number (default = 1)'),
+                    ('max=', 'M', 'greatest experiment number (default = 30)'),
+                    ('save=', 's', 'name of the file with the results')
+                    ]
+
+    def initialize_options(self):
+        self.filename = 'R2/injection_L3_N128_E100_B32'
+        self.min = 1
+        self.max = 30
+        self.save = 'test_results'
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        import os
+        from keras.models import load_model
+        from keras.optimizer_v2.adam import Adam
+        from test import class_accuracy, f1
+        from test.experiments import models, statistics
+        from test import get_processed_dataset
+
+        option_values = [self.filename, self.min, self.max, self.save]
+        for i, option in enumerate(self.user_options):
+            print(option[0] + str(option_values[i]))
+
+        _, _, test_x, test_y = get_processed_dataset('poker')
+        info = ["model;acc;f1;classes"]
+        optimizer = Adam(learning_rate=0.001)
+        for i in range(self.min - 1, self.max):
+            file_exp = self.filename + '_I' + str(i + 1) + '.h5'
+            file_exp = str(models.PATH / file_exp)
+            print(file_exp)
+            model = load_model(file_exp)
+            model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+            classes_accuracy = class_accuracy(model, test_x, test_y)
+            macro_f1 = f1(model, test_x, test_y)
+            info.append(
+                os.path.basename(file_exp) + '; ' +
+                str(model.evaluate(test_x, test_y)[1]) + '; ' +
+                str(macro_f1) + '; ' +
+                str(classes_accuracy)
+            )
+        with open(str(statistics.PATH / self.save) + '.csv', 'w') as f:
+            for row in info:
+                f.write("%s\n" % row)
+
 
 setup(
     name='psyki',  # Required
@@ -93,5 +150,6 @@ setup(
     platforms="Independant",
     cmdclass={
         'run_experiments': RunExperiments,
+        'run_test_evaluation': TestAnalysis
     },
 )

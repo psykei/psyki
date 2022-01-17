@@ -8,7 +8,7 @@ from tensorflow import Tensor
 
 class Injector:
 
-    def __init__(self, predictor, input, activation_function: Callable = None, gamma: float = 1.):
+    def __init__(self, predictor, input, output_shape: int = 10, activation_function: Callable = None, gamma: float = 1.):
         self.original_predictor = predictor
         self.predictor = predictor
         self.input = input
@@ -17,13 +17,14 @@ class Injector:
         self.active_rule: list = []
         self.activation_function = activation_function
         self.gamma = gamma
+        self.output = output_shape
 
     def inject(self, rules: list[Callable], active_rule: list[Callable] = None) -> None:
         self.use_knowledge = True
         self.rules = rules
         self.active_rule = active_rule
         x = Concatenate(axis=1, name='Concatenate')([self.input, self.original_predictor])
-        x = Lambda(self._knowledge_function, self.original_predictor, name='Knowledge')(x)
+        x = Lambda(self._knowledge_function, self.output, name='Knowledge')(x)
         self.predictor = Model(self.input, x)
 
     def _knowledge_function(self, layer_output: Tensor) -> Tensor:

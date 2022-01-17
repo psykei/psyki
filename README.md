@@ -140,6 +140,50 @@ execution time for one epoch is approximately 20 seconds.
 - batch size = 32
 - experiments = 30
 
+Expected output:
+```text
+running run_experiments
+experiments=30
+epochs=100
+layers=3
+neurons=128
+batch=32
+knowledge=Y
+prefix=
+Experiment 1/30
+Model: "model"
+__________________________________________________________________________________________________
+Layer (type)                    Output Shape         Param #     Connected to                     
+==================================================================================================
+Input (InputLayer)              [(None, 10)]         0                                            
+__________________________________________________________________________________________________
+L_1 (Dense)                     (None, 128)          1408        Input[0][0]                      
+__________________________________________________________________________________________________
+L_2 (Dense)                     (None, 128)          16512       L_1[0][0]                        
+__________________________________________________________________________________________________
+L_3 (Dense)                     (None, 10)           1290        L_2[0][0]                        
+__________________________________________________________________________________________________
+Concatenate (Concatenate)       (None, 20)           0           Input[0][0]                      
+                                                                 L_3[0][0]                        
+__________________________________________________________________________________________________
+Knowledge (Lambda)              (None, 10)           0           Concatenate[0][0]                
+==================================================================================================
+Total params: 19,210
+Trainable params: 19,210
+Non-trainable params: 0
+```
+
+```text
+Epoch 1/100
+782/782 [==============================] - 39s 30ms/step - loss: 1.3583 - accuracy: 0.2890 - val_loss: 1.3078 - val_accuracy: 0.2576
+Epoch 2/100
+782/782 [==============================] - 23s 30ms/step - loss: 1.2985 - accuracy: 0.3466 - val_loss: 1.2902 - val_accuracy: 0.3914
+Epoch 3/100
+782/782 [==============================] - 23s 29ms/step - loss: 1.2818 - accuracy: 0.3810 - val_loss: 1.2818 - val_accuracy: 0.2850
+Epoch 4/100
+640/782 [=======================>......] - ETA: 3s - loss: 1.2730 - accuracy: 0.3900
+```
+
 Modes are divided by the knowledge injection received:
 - `test/experiments/models/classic` = no injection
 - `test/experiments/models/R0` = one rule for each class
@@ -148,4 +192,26 @@ Modes are divided by the knowledge injection received:
 
 Training history of each network is stored in `test/experiments/statistics/classic`, `test/experiments/statistics/R0`, `test/experiments/statistics/R1` and `test/experiments/statistics/R2`.
 Test evaluations are saved in `test/experiments/statistics/`.
+
+To run the evaluation of the networks on the test set execute command `python setup.py run_test_evaluation`.
+
+Expected output:
+```text
+running run_test_evaluation
+filename=R2/injection_L3_N128_E100_B32
+min=1
+max=30
+save=test_results
+```
+
+```text
+psyki/test/experiments/models/R2/injection_L3_N128_E100_B32_I1.h5
+2022-01-17 09:22:35.944125: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:185] None of the MLIR Optimization Passes are enabled (registered 2)
+2022-01-17 09:22:35.944258: W tensorflow/core/platform/profile_utils/cpu_utils.cc:128] Failed to get CPU frequency: 0 Hz
+31250/31250 [==============================] - 7s 230us/step - loss: 0.0902 - accuracy: 0.9861
+psyki/test/experiments/models/R2/injection_L3_N128_E100_B32_I2.h5
+31250/31250 [==============================] - 7s 231us/step - loss: 0.0909 - accuracy: 0.9856
+psyki/test/experiments/models/R2/injection_L3_N128_E100_B32_I3.h5
+20519/31250 [==================>...........] - ETA: 2s - loss: 0.0661 - accuracy: 0.9886
+```
 
