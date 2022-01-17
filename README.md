@@ -194,6 +194,7 @@ Training history of each network is stored in `test/experiments/statistics/class
 Test evaluations are saved in `test/experiments/statistics/`.
 
 To run the evaluation of the networks on the test set execute command `python setup.py run_test_evaluation`.
+Run python `setup.py --help run_test_evaluation` for more details.
 
 Expected output:
 ```text
