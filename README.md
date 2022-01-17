@@ -69,8 +69,8 @@ Example for iris:
 
 ```text
 PL <= 2.28 <- X |= setosa
-PL > 2.28 ∨ PW > 1.64 <- X |= virginica
-PL > 2.28 ∨ PW <= 1.64 <- X |= versicolor
+PL > 2.28 ^ PW > 1.64 <- X |= virginica
+PL > 2.28 ^ PW <= 1.64 <- X |= versicolor
 ```
 
 ### Demo
