@@ -1,7 +1,7 @@
 from __future__ import annotations
 import re
 from itertools import combinations
-from tensorflow.python.keras.backend import constant
+from tensorflow.keras.backend import constant
 from tensorflow.python.types.core import Tensor
 import tensorflow as tf
 
@@ -77,9 +77,25 @@ VARIABLE_REGEX: str = r'^(?!' + CLASS_X_REGEX + ')[A-Z]([a-z]|[A-Z])*[0-9]*'
 class LogicOperator:
     arity: int = 0
     priority: int = DEFAULT_PRIORITY
+    name: str = DEFAULT_NAME
 
     def __init__(self, name: str = DEFAULT_NAME):
         self.name: str = name
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __hash__(self):
+        raise Exception('Try to call an abstract method')
+
+    def copy(self) -> LogicOperator:
+        raise Exception('Try to call an abstract method')
 
     def compute(self) -> LogicOperator:
         raise Exception('Try to call an abstract method')
@@ -122,6 +138,12 @@ class Op2(LogicOperator):
         self.l1 = l1
         self.l2 = l2
 
+    def __hash__(self):
+        return hash(self.name) + self.l1.__hash__() + self.l2.__hash__()
+
+    def copy(self) -> LogicOperator:
+        return Op2(self.l1, self.l2, self.name)
+
 
 class Op1(LogicOperator):
 
@@ -129,6 +151,9 @@ class Op1(LogicOperator):
 
     def __init__(self, name: str = DEFAULT_NAME):
         super().__init__(name)
+
+    def __hash__(self):
+        return hash(self.name)
 
 
 class Pass(Op2):
@@ -151,6 +176,7 @@ class Pass(Op2):
 class L(LogicOperator):
 
     priority: int = VARIABLE_PRIORITY
+    name: str = VARIABLE_NAME
 
     def __init__(self, x: Tensor):
         """
@@ -160,6 +186,12 @@ class L(LogicOperator):
 
         super().__init__(VARIABLE_NAME)
         self.x = x
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def copy(self) -> LogicOperator:
+        return L(self.x)
 
     def compute(self) -> L:
         return self
@@ -199,6 +231,7 @@ class L(LogicOperator):
 class Numeric(L):
 
     priority: int = NUMERIC_PRIORITY
+    name: str = NUMERIC_NAME
 
     def __init__(self, x: str):
         """
@@ -221,6 +254,7 @@ class Exist(LogicOperator):
     try all variable combinations and return the nearest to true.
     """
     priority: int = EXIST_PRIORITY
+    name: str = EXIST_NAME
     _head_regex: str = r'\∃\('
     _local_vars_regex: str = r'([A-Z]([a-z]|[A-Z])*[0-9]*,)*[A-Z]([a-z]|[A-Z])*[0-9]*\:'
     _expression_regex: str = r'[^,;]+\,'
@@ -235,6 +269,9 @@ class Exist(LogicOperator):
         self.outer_mapping = outer_mapping
         self.ast = ast
         self.x = x
+
+    def __hash__(self):
+        return hash(self.name)
 
     def compute(self) -> L:
         mapping = self.outer_mapping | self.inner_mapping
@@ -275,6 +312,7 @@ class Exist(LogicOperator):
 class Equivalence(Op2):
 
     priority: int = EQUIVALENCE_PRIORITY
+    name: str = EQUIVALENCE_NAME
 
     def __init__(self, l1: L, l2: L):
         """
@@ -293,6 +331,7 @@ class Equivalence(Op2):
 class Implication(Op2):
 
     priority: int = IMPLICATION_PRIORITY
+    name: str = IMPLICATION_NAME
 
     def __init__(self, l1: L, l2: L):
         """
@@ -317,6 +356,7 @@ class Implication(Op2):
 class ReverseImplication(Op2):
 
     priority: int = REVERSE_IMPLICATION_PRIORITY
+    name: str = REVERSE_IMPLICATION_NAME
 
     def __init__(self, l1: L, l2: L):
         """
@@ -341,6 +381,7 @@ class ReverseImplication(Op2):
 class DoubleImplication(Op2):
 
     priority: int = DOUBLE_IMPLICATION_PRIORITY
+    name: str = DOUBLE_IMPLICATION_NAME
 
     def __init__(self, l1: L, l2: L):
         """
@@ -365,6 +406,7 @@ class DoubleImplication(Op2):
 class Negation(Op1):
 
     priority: int = NEGATION_PRIORITY
+    name: str = NEGATION_NAME
 
     def __init__(self, l1: L):
         """
@@ -376,6 +418,9 @@ class Negation(Op1):
     def compute(self) -> L:
         return L(L.false() - L.fringe(self.l1.x))
 
+    def copy(self) -> LogicOperator:
+        return Negation(self.l1)
+
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicOperator._parse(NEGATION_REGEX, string)
@@ -384,6 +429,7 @@ class Negation(Op1):
 class Conjunction(Op2):
 
     priority: int = CONJUNCTION_PRIORITY
+    name: str = CONJUNCTION_NAME
 
     def __init__(self, l1: L, l2: L):
         """
@@ -402,6 +448,7 @@ class Conjunction(Op2):
 class Disjunction(Op2):
 
     priority: int = DISJUNCTION_PRIORITY
+    name: str = DISJUNCTION_NAME
 
     def __init__(self, l1: L, l2: L):
         """
@@ -420,6 +467,7 @@ class Disjunction(Op2):
 class GreaterEqual(Op2):
 
     priority: int = GREATER_EQUAL_PRIORITY
+    name: str = GREATER_EQUAL_NAME
 
     def __init__(self, l1: L, l2: L):
         super().__init__(l1, l2, GREATER_EQUAL_NAME)
@@ -435,6 +483,7 @@ class GreaterEqual(Op2):
 class Greater(Op2):
 
     priority: int = GREATER_PRIORITY
+    name: str = GREATER_NAME
 
     def __init__(self, l1: L, l2: L):
         super().__init__(l1, l2, GREATER_NAME)
@@ -450,6 +499,7 @@ class Greater(Op2):
 class Disequal(Op2):
 
     priority: int = DISEQUAL_PRIORITY
+    name: str = DISEQUAL_NAME
 
     def __init__(self, l1: L, l2: L):
         super().__init__(l1, l2, DISEQUAL_NAME)
@@ -465,6 +515,7 @@ class Disequal(Op2):
 class Less(Op2):
 
     priority: int = LESS_PRIORITY
+    name: str = LESS_NAME
 
     def __init__(self, l1: L, l2: L):
         super().__init__(l1, l2, LESS_NAME)
@@ -480,6 +531,7 @@ class Less(Op2):
 class LessEqual(Op2):
 
     priority: int = LESS_EQUAL_PRIORITY
+    name: str = LESS_EQUAL_NAME
 
     def __init__(self, l1: L, l2: L):
         super().__init__(l1, l2, LESS_EQUAL_NAME)
@@ -495,6 +547,7 @@ class LessEqual(Op2):
 class Plus(Op2):
 
     priority: int = PLUS_PRIORITY
+    name: str = PLUS_NAME
 
     def __init__(self, l1: L, l2: L):
         super().__init__(l1, l2, PLUS_NAME)
@@ -510,6 +563,7 @@ class Plus(Op2):
 class Product(Op2):
 
     priority: int = PRODUCT_PRIORITY
+    name: str = PRODUCT_NAME
 
     def __init__(self, l1: L, l2: L):
         super().__init__(l1, l2, PRODUCT_NAME)
@@ -551,7 +605,9 @@ class LTY(LT):
 
 
 class LTEquivalence(Op2):
+
     priority: int = EQUIVALENCE_PRIORITY
+    name: str = LT_EQUIVALENCE_NAME
 
     def __init__(self, l1: LT, l2: LT):
         """

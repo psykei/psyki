@@ -1,8 +1,7 @@
 import os
 import numpy as np
-import tensorflow as tf
-from keras.callbacks import CSVLogger, ModelCheckpoint
-from keras.layers import Dense
+from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
+from tensorflow.keras.layers import Dense
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
@@ -10,32 +9,8 @@ from tensorflow import Tensor
 from psyki.fol import Parser
 from test.experiments import statistics
 from test.experiments import models
-from test.resources import get_rules, get_dataset
+from test.resources import get_rules, get_dataset, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING
 
-POKER_INPUT_MAPPING = {
-        'S1': 0,
-        'R1': 1,
-        'S2': 2,
-        'R2': 3,
-        'S3': 4,
-        'R3': 5,
-        'S4': 6,
-        'R4': 7,
-        'S5': 8,
-        'R5': 9
-    }
-POKER_OUTPUT_MAPPING = {
-        'nothing':          tf.constant([1, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32),
-        'pair':             tf.constant([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32),
-        'twoPairs':         tf.constant([0, 0, 1, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32),
-        'tris':             tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32),
-        'straight':         tf.constant([0, 0, 0, 0, 1, 0, 0, 0, 0, 0], dtype=tf.float32),
-        'flush':            tf.constant([0, 0, 0, 0, 0, 1, 0, 0, 0, 0], dtype=tf.float32),
-        'full':             tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32),
-        'poker':            tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32),
-        'straightFlush':    tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32),
-        'royalFlush':       tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=tf.float32)
-    }
 _parser = Parser.extended_parser()
 POKER_RULES = [_parser.get_function(rule, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING)
                for _, rule in get_rules('poker').items()]
