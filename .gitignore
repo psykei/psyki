@@ -159,3 +159,5 @@ test/experiments/models/old
 test/experiments/statistics/old
 *.png
 *.svg
+private/
+test.py
