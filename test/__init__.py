@@ -6,6 +6,9 @@ from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from tensorflow import Tensor
+from tensorflow.python.keras import Model
+from tensorflow.python.keras.callbacks import Callback
+
 from psyki.fol import Parser
 from test.experiments import statistics
 from test.experiments import models
@@ -14,6 +17,8 @@ from test.resources import get_rules, get_dataset, POKER_INPUT_MAPPING, POKER_OU
 _parser = Parser.extended_parser()
 POKER_RULES = [_parser.get_function(rule, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING)
                for _, rule in get_rules('poker').items()]
+POKER_RULES_2 = [_parser.get_function(rule, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING)
+               for _, rule in get_rules('poker2').items()]
 
 
 def class_accuracy(_model, _x, _y) -> list:
@@ -66,11 +71,29 @@ def get_mlp(input: Tensor, output: int, layers: int, neurons: int, activation_fu
     return Dense(output, activation=last_activation_function, name='L_' + str(layers))(x)
 
 
-def train_network(network, train_x, train_y, test_x, test_y, batch_size: int, epochs: int, file: str = None):
+class CustomCallback(Callback):
+
+    def __init__(self, file):
+        super().__init__()
+        self.file = file
+        self.best = 0.
+
+    def on_epoch_end(self, epoch, logs=None):
+        if logs.get('val_accuracy') > self.best:
+            self.best = logs.get('val_accuracy')
+            model = Model(inputs=self.model.input, outputs=self.model.layers[-3].output)
+            model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+            model.save(self.file)
+
+
+def train_network(network, train_x, train_y, test_x, test_y, batch_size: int, epochs: int, file: str = None, knowledge=False):
+    extension = '.h5'
     if file is None:
         file = 'experiment' + str(len([name for name in os.listdir(statistics.PATH)]) - 1)
     csv_logger = CSVLogger(str(statistics.PATH / file) + '.csv', append=False, separator=';')
-    model_checkpoint = ModelCheckpoint(filepath=str(models.PATH / file) + '.h5', monitor='val_accuracy', mode='max', save_best_only=True)
+    model_checkpoint = ModelCheckpoint(filepath=str(models.PATH / file) + extension, monitor='val_accuracy', mode='max', save_best_only=True)
+    if knowledge:
+        model_checkpoint = CustomCallback(str(models.PATH / file) + extension)
     network.fit(train_x, train_y, validation_data=(test_x, test_y), verbose=1, batch_size=batch_size, epochs=epochs, callbacks=[csv_logger, model_checkpoint])
 
 

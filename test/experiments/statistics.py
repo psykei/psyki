@@ -66,3 +66,4 @@ def student_t_test_class(file_name1: str, file_name2: str, class_index: int = 0,
     return ttest_ind(classes1[:, class_index], classes2[:, class_index])
 
 
+generate_table(['test_results_stucturing'], 'table_mean_structuring', ['structuring'])

@@ -1,24 +1,27 @@
 from typing import Callable
 from collections import Iterable
 from tensorflow.keras import Model
+from tensorflow.python.keras.backend import shape, constant, relu
+from tensorflow.python.keras.layers import Minimum, Maximum, Dot
 from tensorflow.python.ops.array_ops import gather
-from psyki.fol import Node
+from tensorflow.python.ops.init_ops_v2 import constant_initializer, Ones, Zeros
+import tensorflow as tf
+from psyki.fol import Node, Conjunction, Disjunction, Equivalence, Disequal, GreaterEqual, Greater, Less, LessEqual, \
+    Plus, Product, Numeric
 from tensorflow.keras.layers import Concatenate, Lambda, Input, Dense
 from tensorflow.keras.models import load_model
-from tensorflow import Tensor, stack
+from tensorflow import Tensor, stack, reshape
 
 
 class Injector:
 
-    def __init__(self, predictor, input, output_shape: int = 10, activation_function: Callable = None,
-                 gamma: float = 1.):
+    def __init__(self, predictor, input, output_shape: int = 10, gamma: float = 1.):
         self.original_predictor = predictor
         self.predictor = predictor
         self.input = input
         self.use_knowledge: bool = False
         self.rules: list = []
         self.active_rule: list = []
-        self.activation_function = activation_function
         self.gamma = gamma
         self.output = output_shape
 
@@ -45,7 +48,7 @@ class Injector:
         return result
 
     def save(self, file: str):
-        Model(inputs=self.predictor.net_input, outputs=self.predictor.layers[-3].output).save(file)
+        Model(inputs=self.predictor.input, outputs=self.predictor.layers[-3].output).save(file)
 
     def load(self, file):
         return load_model(file, custom_objects={'_knowledge_function': self._knowledge_function})
@@ -59,52 +62,81 @@ class Injector:
         self.use_knowledge = value
 
 
+def my_abs(x):
+    return tf.abs(x)
+
+
+def one_minus_abs(x):
+    return relu(1 - tf.abs(x))
+
+
+def negation(x):
+    return tf.abs(x - 1)
+
+
 class KnowledgeNetwork:
 
-    def __init__(self, tree: Node):
+    def __init__(self, tree: Node, network_input: Input, input_mapping):
         self.tree = tree
-        self.input = None
+        self.input = network_input
+        self.input_mapping = input_mapping
+        # self.tree.prune_constants()
+        self.activation = 'tanh'
 
-    def network(self):
-        variables = self.tree.leaves()
-        input_size = KnowledgeNetwork._unique_nodes(variables)
-        unique_names = []
-        # Preserve order
-        for variable in variables:
-            if variable.arg not in unique_names:
-                unique_names.append(variable.arg)
-        variables_mapping = {name: i for name, i in zip(unique_names, range(input_size))}
-        self.input = Input(input_size)
-        connection_mapping = self._connections(variables_mapping)
-        self.tree.prune_leaves()
-        new_layer = self.build_layer(self.input, connection_mapping)
-        while len(self.tree.children) > 0:
-            previous_layer = new_layer
-            old_nodes = list(self.tree.leaves())
-            previous_layer_size = len(old_nodes)
-            for i, node in enumerate(old_nodes):
-                node.arg = i
-            naming = {node.arg: i for node, i in zip(old_nodes, range(previous_layer_size))}
-            connection_mapping = self._connections(naming)
-            self.tree.prune_leaves()
-            if len(self.tree.children) > 0:
-                new_layer = self.build_layer(previous_layer, connection_mapping)
-        return Dense(1)(new_layer)
+    def network(self, current_node=None):
+        current_node = self.tree if current_node is None else current_node
+        if len(current_node.children) == 0:
+            index = self.input_mapping[current_node.arg]
+            return Lambda(lambda x: gather(x, [index], axis=1))(self.input)
+        elif len(current_node.children) == 1:
+            return Dense(1, activation=self.activation)(self.network(current_node=current_node.children[0]))
+        else:
+            previous_layer = Concatenate(axis=1)([self.network(current_node=child) for child in current_node.children])
+            return Dense(1, activation=self.activation)(previous_layer)
 
-    def build_layer(self, previous_layer, mapping):
-        layer_size = len(list(self.tree.leaves()))
-        inputs = [Lambda(lambda x: gather(x, mapping[i], axis=1), output_shape=(len(mapping[i]),))(previous_layer)
-                  for i in range(layer_size)]
-        return Concatenate()([Dense(1)(inputs[i]) for i in range(layer_size)])
-
-    @staticmethod
-    def _unique_nodes(nodes: Iterable[Node]) -> int:
-        return len(set([node.arg for node in nodes]))
-
-    def _connections(self, naming) -> dict[int, list[int]]:
-        leaves_depth = list(self.tree.leaves())[0].depth
-        new_nodes = self.tree.level(leaves_depth - 1)
-        result = {}
-        for i, node in enumerate(new_nodes):
-            result[i] = [naming[child.arg] for child in node.children]
-        return result  # {i: [naming[child.arg] for child in node.children] for i, node in enumerate(new_nodes)}
+    def initialized_network(self, current_node=None):
+        current_node = self.tree if current_node is None else current_node
+        if len(current_node.children) == 0:
+            if current_node.operator == Numeric:
+                return Dense(1, kernel_initializer=Zeros, bias_initializer=constant_initializer(float(current_node.arg)),
+                             activation='linear')(self.input)
+            else:  # Filtering and Identity
+                index = self.input_mapping[current_node.arg]
+                return Lambda(lambda x: gather(x, [index], axis=1))(self.input)
+        elif len(current_node.children) == 1:
+            # Negation
+            return Dense(1, kernel_initializer=Ones, activation=negation)\
+                (self.initialized_network(current_node=current_node.children[0]))
+        else:
+            previous_layer = Concatenate(axis=1)\
+                ([self.initialized_network(current_node=child) for child in current_node.children])
+            if current_node.operator == Conjunction:
+                return Minimum()([self.initialized_network(current_node=child) for child in current_node.children])
+            elif current_node.operator == Disjunction:
+                return Maximum()([self.initialized_network(current_node=child) for child in current_node.children])
+            elif current_node.operator == Equivalence:
+                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs)\
+                    (previous_layer)
+            elif current_node.operator == Disequal:
+                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=my_abs)\
+                    (previous_layer)
+            elif current_node.operator == Greater:
+                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation='relu')(previous_layer)
+            elif current_node.operator == Less:
+                return Dense(1, kernel_initializer=constant_initializer([-1, 1]), activation='relu')(previous_layer)
+            elif current_node.operator == GreaterEqual:
+                greater = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation='relu')(previous_layer)
+                equal = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs)\
+                    (previous_layer)
+                return Maximum()([greater, equal])
+            elif current_node.operator == LessEqual:
+                less = Dense(1, kernel_initializer=constant_initializer([-1, 1]), activation='relu')(previous_layer)
+                equal = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs)\
+                    (previous_layer)
+                return Maximum()([less, equal])
+            elif current_node.operator == Plus:
+                return Dense(1, kernel_initializer=Ones(), activation='linear')(previous_layer)
+            elif current_node.operator == Product:
+                return Dot(axes=1)([self.initialized_network(current_node=child) for child in current_node.children])
+            else:
+                return Dense(1, activation=self.activation)(previous_layer)

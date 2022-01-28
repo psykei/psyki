@@ -25,10 +25,10 @@ def save_plot(files: list[str]):
         plt.title('model accuracy')
         plt.ylabel('accuracy')
         plt.xlabel('epoch')
-        plt.legend(['train acc', 'val acc'], loc='bottom right')
+        plt.legend(['train acc', 'val acc'], loc='lower right')
         plot_name = str(img.PATH / os.path.basename(file)[:-4]) + '_accuracy.png'
-        if not os.path.isfile(plot_name):
-            plt.savefig(plot_name)
+        plt.grid()
+        plt.savefig(plot_name)
         plt.cla()
 
         plt.plot(history['loss'])
@@ -38,8 +38,8 @@ def save_plot(files: list[str]):
         plt.xlabel('epoch')
         plt.legend(['train loss', 'val loss'], loc='upper right')
         plot_name = str(img.PATH / os.path.basename(file)[:-4]) + '_loss.png'
-        if not os.path.isfile(plot_name):
-            plt.savefig(plot_name)
+        plt.grid()
+        plt.savefig(plot_name)
         plt.cla()
 
 
@@ -132,13 +132,16 @@ def classes_distribution(files: list[str], names: list[str], col_name: str = 'cl
     plt.cla()
 
 
-experiments_file_names = ['test_results_classic', 'test_results_R0', 'test_results_R1', 'test_results_R2']
-short_names = ['classic', 'R0', 'R1', 'R2']
+# save_plot([str(statistics.PATH / 'structuring4.csv')])
+"""
+"""
+experiments_file_names = ['test_results_classic', 'test_results_R2', 'test_result_structuring3']
+short_names = ['classic', 'Structuring', 'R2']
 title = 'class accuracy distributions'
 colors1 = ['red', 'blue', 'darkgreen', 'darkorange']
 colors2 = ['salmon', 'cyan', 'lightgreen', 'bisque']
 
-classes_distribution(experiments_file_names, short_names, 'classes', [0,1,2,3,4], 'classes-distribution1',
+classes_distribution(experiments_file_names, short_names, 'classes', [0,1,2,3,4], 'classes-distribution-all-1',
                      title, colors1, colors2)
-classes_distribution(experiments_file_names, short_names, 'classes', [5,6,7,8,9], 'classes-distribution2',
+classes_distribution(experiments_file_names, short_names, 'classes', [5,6,7,8,9], 'classes-distribution-all-2',
                      title, colors1, colors2)

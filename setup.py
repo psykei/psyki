@@ -1,6 +1,8 @@
 import distutils.cmd
 from setuptools import setup, find_packages
 
+from psyki import my_abs, one_minus_abs, negation
+
 
 class RunExperiments(distutils.cmd.Command):
     description = 'run injection experiments on poker hand dataset'
@@ -25,10 +27,9 @@ class RunExperiments(distutils.cmd.Command):
         pass
 
     def run(self):
-        from keras import Model
+        from tensorflow.keras import Model
         from tensorflow.keras import Input
-        from tensorflow.keras.activations import softmax
-        from keras.optimizer_v2.adam import Adam
+        from tensorflow.keras.optimizers import Adam
         from psyki import Injector
         from test import POKER_RULES, get_mlp, train_network, get_processed_dataset
 
@@ -49,7 +50,7 @@ class RunExperiments(distutils.cmd.Command):
                              str(self.batch_size) + '_I' + str(i + 1)
             if self.knowledge.lower() == 'y':
                 file = self.prefix + 'injection_L' + main_file_name
-                injector = Injector(network, net_input, softmax)
+                injector = Injector(network, net_input)
                 injector.inject(POKER_RULES)
                 injector.predictor.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
                 model = injector.predictor
@@ -61,13 +62,8 @@ class RunExperiments(distutils.cmd.Command):
 
             # Train the model with rules
             model.summary()
-            train_network(model, train_x, train_y, test_x, test_y, batch_size=self.batch_size, epochs=self.epochs, file=file)
-
-            # Save the base network without knowledge layer
-            if self.knowledge.lower() == 'y':
-                model = Model(inputs=model.net_input, outputs=model.layers[-3].output)
-                model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                model.save(file)
+            train_network(model, train_x, train_y, test_x, test_y, batch_size=self.batch_size, epochs=self.epochs,
+                          file=file, knowledge=self.knowledge.lower() == 'y')
 
 
 class TestAnalysis(distutils.cmd.Command):
@@ -79,18 +75,19 @@ class TestAnalysis(distutils.cmd.Command):
                     ]
 
     def initialize_options(self):
-        self.filename = 'R2/injection_L3_N128_E100_B32'
+        self.filename = 'structuring/model'
         self.min = 1
         self.max = 30
-        self.save = 'test_results'
+        self.save = 'test_results_stucturing'
 
     def finalize_options(self):
-        pass
+        self.min = int(self.min)
+        self.max = int(self.max)
 
     def run(self):
         import os
-        from keras.models import load_model
-        from keras.optimizer_v2.adam import Adam
+        from tensorflow.keras.models import load_model
+        from tensorflow.keras.optimizers import Adam
         from test import class_accuracy, f1
         from test.experiments import models, statistics
         from test import get_processed_dataset
@@ -103,10 +100,10 @@ class TestAnalysis(distutils.cmd.Command):
         info = ["model;acc;f1;classes"]
         optimizer = Adam(learning_rate=0.001)
         for i in range(self.min - 1, self.max):
-            file_exp = self.filename + '_I' + str(i + 1) + '.h5'
+            file_exp = self.filename + '_' + str(i) + '.h5' # if self.min != self.max else self.filename + '.h5'
             file_exp = str(models.PATH / file_exp)
             print(file_exp)
-            model = load_model(file_exp)
+            model = load_model(file_exp, custom_objects={'my_abs': my_abs, 'one_minus_abs': one_minus_abs, 'negation': negation})
             model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
             classes_accuracy = class_accuracy(model, test_x, test_y)
             macro_f1 = f1(model, test_x, test_y)

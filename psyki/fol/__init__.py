@@ -33,8 +33,15 @@ class Parser:
         tree = AST()
         for term in terms:
             tree.insert(term[0], term[1])
-        self.last_tree = tree
+        self.last_tree = tree.root.copy()
         return tree.root.call(input_mapping, output_mapping)
+
+    def tree(self, rule, flat=False):
+        terms = self.parse(rule)
+        tree = AST()
+        for term in terms:
+            tree.insert(term[0], term[1])
+        return tree.root.children[0].flat_tree() if flat else tree.root.children[0]
 
     def _get_exist_value(self, string: str) -> Any:
         # ∃(local vars: expression, vars)
@@ -70,9 +77,6 @@ class AST:
     def __str__(self) -> str:
         return self.root.__str__()
 
-    def flat_ast(self) -> Node:
-        return self.root.children[0].flat_tree()
-
     def insert(self, lo: LogicOperator.__class__, arg: Any) -> None:
         # If there is already an open left par call insert on the tmp ast
         if self.tmp_ast is not None:
@@ -84,8 +88,10 @@ class AST:
                 incomplete_node = self.parent_ast.root.get_first_incomplete_node()
                 if incomplete_node is None:
                     self.parent_ast.root.children.append(self.root)
+                    self.root.father = self.parent_ast.root
                 else:
                     incomplete_node.children.append(self.root)
+                    self.root.father = incomplete_node
             else:
                 self.parent_ast.root = self.root
             self.parent_ast.tmp_ast = None
@@ -107,7 +113,9 @@ class AST:
         # Change rightmost child if there is priority and AST is complete
         elif self.root.is_complete() and lo.priority > self.root.operator.priority:
             rightmost_child = self.root.children[-1]
-            self.root.children[-1] = Node(lo, arg, [rightmost_child])
+            new_node = Node(lo, arg, [rightmost_child], self.root)
+            rightmost_child.father = new_node
+            self.root.children[-1] = new_node
 
 
 class Node:
@@ -122,6 +130,14 @@ class Node:
         result = "\t" * level + repr(self.arg) + '\n'
         return result + "".join(child.__str__(level + 1) for child in self.children)
 
+    def __getitem__(self, item, count=0):
+        if item == count:
+            return self
+        else:
+            for child in self.children:
+                count = count + 1
+                return child[item, count]
+
     def copy(self) -> Node:
         return Node(self.operator, self.arg, self.children, self.father)
 
@@ -135,7 +151,7 @@ class Node:
     def flat_tree(self, father=None) -> Node:
         if len(self.children) > 0:
             flat_operator = self.operator
-            flat_operator.arity = self._equal_operator_depth()
+            # flat_operator.arity = self._equal_operator_depth()
             new_node = Node(flat_operator, self.arg, father=father)
             new_children = [node.flat_tree(new_node) for node in self._fringe()]
             new_node.children = new_children
@@ -225,7 +241,10 @@ class Node:
 
     def _equal_operator_depth(self, result=0) -> int:
         if self.operator == self.children[0].operator:
-            return result + self.children[0]._equal_operator_depth(result)
+            if len(self.children) == 2 and self.operator == self.children[1].operator:
+                return result + self.children[0]._equal_operator_depth(result) + self.children[1]._equal_operator_depth(result) + 1
+            else:
+                return result + self.children[0]._equal_operator_depth(result) + 1
         else:
             return result + self.operator.arity
 
@@ -249,9 +268,20 @@ class Node:
         else:
             self.father.children.remove(self)
 
-    # TODO: this is specific for a binary operator!
+    def prune_constants(self):
+        if len(self.children) > 0:
+            children_copy = self.children.copy()
+            for node in children_copy:
+                node.prune_constants()
+        else:
+            if self.operator == Numeric:
+                self.father.children.remove(self)
+
     def _fringe(self) -> list[Node]:
         if self.operator == self.children[0].operator:
-            return self.children[0]._fringe() + [self.children[1]]
+            if len(self.children) == 2 and self.operator == self.children[1].operator:
+                return self.children[0]._fringe() + self.children[1]._fringe()
+            else:
+                return self.children[0]._fringe() + [self.children[1]] if len(self.children) == 2 else self.children[0]._fringe()
         else:
-            return [self.children[0], self.children[1]]
+            return self.children
