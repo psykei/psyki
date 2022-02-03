@@ -7,7 +7,7 @@ from tensorflow.python.ops.array_ops import gather
 from tensorflow.python.ops.init_ops_v2 import constant_initializer, Ones, Zeros
 import tensorflow as tf
 from psyki.fol import Node, Conjunction, Disjunction, Equivalence, Disequal, GreaterEqual, Greater, Less, LessEqual, \
-    Plus, Product, Numeric
+    Plus, Product, Numeric, Pass
 from tensorflow.keras.layers import Concatenate, Lambda, Input, Dense
 from tensorflow.keras.models import load_model
 from tensorflow import Tensor, stack, reshape
@@ -63,7 +63,7 @@ class Injector:
 
 
 def my_abs(x):
-    return tf.abs(x)
+    return tf.minimum(1, tf.abs(x))
 
 
 def one_minus_abs(x):
@@ -97,15 +97,17 @@ class KnowledgeNetwork:
     def initialized_network(self, current_node=None):
         current_node = self.tree if current_node is None else current_node
         if len(current_node.children) == 0:
-            if current_node.operator == Numeric:
+            if current_node.operator == Pass:
+                return Dense(1, kernel_initializer=Zeros, bias_initializer=constant_initializer(0))(self.input)
+            elif current_node.operator == Numeric:
                 return Dense(1, kernel_initializer=Zeros, bias_initializer=constant_initializer(float(current_node.arg)),
-                             activation='linear')(self.input)
+                             trainable=False, activation='linear')(self.input)
             else:  # Filtering and Identity
                 index = self.input_mapping[current_node.arg]
                 return Lambda(lambda x: gather(x, [index], axis=1))(self.input)
         elif len(current_node.children) == 1:
             # Negation
-            return Dense(1, kernel_initializer=Ones, activation=negation)\
+            return Dense(1, kernel_initializer=Ones, activation=negation, trainable=False)\
                 (self.initialized_network(current_node=current_node.children[0]))
         else:
             previous_layer = Concatenate(axis=1)\
@@ -115,28 +117,27 @@ class KnowledgeNetwork:
             elif current_node.operator == Disjunction:
                 return Maximum()([self.initialized_network(current_node=child) for child in current_node.children])
             elif current_node.operator == Equivalence:
-                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs)\
-                    (previous_layer)
+                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs, trainable=False)(previous_layer)
             elif current_node.operator == Disequal:
-                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=my_abs)\
+                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=my_abs, trainable=False)\
                     (previous_layer)
             elif current_node.operator == Greater:
-                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation='relu')(previous_layer)
+                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation='relu', trainable=False)(previous_layer)
             elif current_node.operator == Less:
-                return Dense(1, kernel_initializer=constant_initializer([-1, 1]), activation='relu')(previous_layer)
+                return Dense(1, kernel_initializer=constant_initializer([-1, 1]), activation='relu', trainable=False)(previous_layer)
             elif current_node.operator == GreaterEqual:
-                greater = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation='relu')(previous_layer)
-                equal = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs)\
+                greater = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation='relu', trainable=False)(previous_layer)
+                equal = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs, trainable=False)\
                     (previous_layer)
                 return Maximum()([greater, equal])
             elif current_node.operator == LessEqual:
-                less = Dense(1, kernel_initializer=constant_initializer([-1, 1]), activation='relu')(previous_layer)
-                equal = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs)\
+                less = Dense(1, kernel_initializer=constant_initializer([-1, 1]), activation='relu', trainable=False)(previous_layer)
+                equal = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs, trainable=False)\
                     (previous_layer)
                 return Maximum()([less, equal])
             elif current_node.operator == Plus:
-                return Dense(1, kernel_initializer=Ones(), activation='linear')(previous_layer)
+                return Dense(1, kernel_initializer=Ones(), activation='linear', trainable=False)(previous_layer)
             elif current_node.operator == Product:
                 return Dot(axes=1)([self.initialized_network(current_node=child) for child in current_node.children])
             else:
-                return Dense(1, activation=self.activation)(previous_layer)
+                return Dense(1, activation=self.activation, trainable=False)(previous_layer)

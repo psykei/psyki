@@ -66,4 +66,6 @@ def student_t_test_class(file_name1: str, file_name2: str, class_index: int = 0,
     return ttest_ind(classes1[:, class_index], classes2[:, class_index])
 
 
-generate_table(['test_results_stucturing'], 'table_mean_structuring', ['structuring'])
+files = ['test_results_classic'] + ['test_result_structuring' + str(i) for i in range(1, 11)][::-1]
+labels = ['classic'] + [str(i) + ' rules' for i in range(1, 11)]
+generate_table(files, 'table_mean_structuring', labels)

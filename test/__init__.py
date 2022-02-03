@@ -1,4 +1,7 @@
 import os
+from os.path import dirname, isdir
+from pathlib import Path
+
 import numpy as np
 from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
 from tensorflow.keras.layers import Dense
@@ -90,7 +93,11 @@ def train_network(network, train_x, train_y, test_x, test_y, batch_size: int, ep
     extension = '.h5'
     if file is None:
         file = 'experiment' + str(len([name for name in os.listdir(statistics.PATH)]) - 1)
+    if not isdir(dirname(statistics.PATH / file)):
+        Path(dirname(statistics.PATH / file)).mkdir(parents=True, exist_ok=True)
     csv_logger = CSVLogger(str(statistics.PATH / file) + '.csv', append=False, separator=';')
+    if not isdir(dirname(models.PATH / file)):
+        Path(dirname(models.PATH / file)).mkdir(parents=True, exist_ok=True)
     model_checkpoint = ModelCheckpoint(filepath=str(models.PATH / file) + extension, monitor='val_accuracy', mode='max', save_best_only=True)
     if knowledge:
         model_checkpoint = CustomCallback(str(models.PATH / file) + extension)

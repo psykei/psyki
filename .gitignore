@@ -158,6 +158,7 @@ dmypy.json
 test/experiments/models/old
 test/experiments/statistics/old
 *.png
+*.pdf
 *.svg
 private/
 test.py

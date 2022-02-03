@@ -36,12 +36,17 @@ class Parser:
         self.last_tree = tree.root.copy()
         return tree.root.call(input_mapping, output_mapping)
 
-    def tree(self, rule, flat=False):
+    def tree(self, rule, flat=False, full=False):
         terms = self.parse(rule)
         tree = AST()
         for term in terms:
             tree.insert(term[0], term[1])
-        return tree.root.children[0].flat_tree() if flat else tree.root.children[0]
+        if tree.root.operator == Pass:
+            return tree.root
+        elif full:
+            return tree.root.flat_tree() if flat else tree.root
+        else:
+            return tree.root.children[0].flat_tree() if flat else tree.root.children[0]
 
     def _get_exist_value(self, string: str) -> Any:
         # ∃(local vars: expression, vars)

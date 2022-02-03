@@ -1,7 +1,8 @@
 import distutils.cmd
 from setuptools import setup, find_packages
 
-from psyki import my_abs, one_minus_abs, negation
+from psyki.fol import Parser
+from test import get_rules
 
 
 class RunExperiments(distutils.cmd.Command):
@@ -75,7 +76,7 @@ class TestAnalysis(distutils.cmd.Command):
                     ]
 
     def initialize_options(self):
-        self.filename = 'structuring/model'
+        self.filename = 'structuring1/model'
         self.min = 1
         self.max = 30
         self.save = 'test_results_stucturing'
@@ -91,6 +92,8 @@ class TestAnalysis(distutils.cmd.Command):
         from test import class_accuracy, f1
         from test.experiments import models, statistics
         from test import get_processed_dataset
+        from sklearn.metrics import confusion_matrix
+        from psyki import my_abs, one_minus_abs, negation
 
         option_values = [self.filename, self.min, self.max, self.save]
         for i, option in enumerate(self.user_options):
@@ -105,6 +108,8 @@ class TestAnalysis(distutils.cmd.Command):
             print(file_exp)
             model = load_model(file_exp, custom_objects={'my_abs': my_abs, 'one_minus_abs': one_minus_abs, 'negation': negation})
             model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+            # pred_y = model.predict(test_x)
+            # matrix = confusion_matrix(test_y, pred_y.argmax(axis=1))
             classes_accuracy = class_accuracy(model, test_x, test_y)
             macro_f1 = f1(model, test_x, test_y)
             info.append(
@@ -116,6 +121,28 @@ class TestAnalysis(distutils.cmd.Command):
         with open(str(statistics.PATH / self.save) + '.csv', 'w') as f:
             for row in info:
                 f.write("%s\n" % row)
+
+
+class ASTVisualizer(distutils.cmd.Command):
+    description = 'Print the ast of a rule'
+    user_options = [('file=', 'f', 'file name of the rules'),
+                    ('rule=', 'r', 'name of the rule'),
+                    ('flat=', 'f', 'flat ast'),
+                    ]
+
+    def initialize_options(self):
+        self.filename = 'poker'
+        self.rule = 'pair'
+        self.flat = False
+
+    def finalize_options(self):
+        self.flat = bool(self.flat)
+
+    def run(self):
+        rules = get_rules(self.filename)
+        rule = rules[self.rule]
+        parser = Parser.default_parser()
+        print(parser.tree(rule, self.flat, True))
 
 
 setup(
@@ -147,6 +174,7 @@ setup(
     platforms="Independant",
     cmdclass={
         'run_experiments': RunExperiments,
-        'run_test_evaluation': TestAnalysis
+        'run_test_evaluation': TestAnalysis,
+        'run_ast_visualizer': ASTVisualizer
     },
 )
