@@ -10,7 +10,7 @@ from psyki.fol import Node, Conjunction, Disjunction, Equivalence, Disequal, Gre
     Plus, Product, Numeric, Pass
 from tensorflow.keras.layers import Concatenate, Lambda, Input, Dense
 from tensorflow.keras.models import load_model
-from tensorflow import Tensor, stack, reshape
+from tensorflow import Tensor, stack
 
 
 class Injector:
@@ -62,19 +62,7 @@ class Injector:
         self.use_knowledge = value
 
 
-def my_abs(x):
-    return tf.minimum(1, tf.abs(x))
-
-
-def one_minus_abs(x):
-    return relu(1 - tf.abs(x))
-
-
-def negation(x):
-    return tf.abs(x - 1)
-
-
-class KnowledgeNetwork:
+class KnowledgeModule:
 
     def __init__(self, tree: Node, network_input: Input, input_mapping):
         self.tree = tree
@@ -107,7 +95,7 @@ class KnowledgeNetwork:
                 return Lambda(lambda x: gather(x, [index], axis=1))(self.input)
         elif len(current_node.children) == 1:
             # Negation
-            return Dense(1, kernel_initializer=Ones, activation=negation, trainable=False)\
+            return Dense(1, kernel_initializer=Ones, activation=KnowledgeModule.negation, trainable=False)\
                 (self.initialized_network(current_node=current_node.children[0]))
         else:
             previous_layer = Concatenate(axis=1)\
@@ -117,9 +105,9 @@ class KnowledgeNetwork:
             elif current_node.operator == Disjunction:
                 return Maximum()([self.initialized_network(current_node=child) for child in current_node.children])
             elif current_node.operator == Equivalence:
-                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs, trainable=False)(previous_layer)
+                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=KnowledgeModule.one_minus_abs, trainable=False)(previous_layer)
             elif current_node.operator == Disequal:
-                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=my_abs, trainable=False)\
+                return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=KnowledgeModule.my_abs, trainable=False)\
                     (previous_layer)
             elif current_node.operator == Greater:
                 return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation='relu', trainable=False)(previous_layer)
@@ -127,12 +115,12 @@ class KnowledgeNetwork:
                 return Dense(1, kernel_initializer=constant_initializer([-1, 1]), activation='relu', trainable=False)(previous_layer)
             elif current_node.operator == GreaterEqual:
                 greater = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation='relu', trainable=False)(previous_layer)
-                equal = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs, trainable=False)\
+                equal = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=KnowledgeModule.one_minus_abs, trainable=False)\
                     (previous_layer)
                 return Maximum()([greater, equal])
             elif current_node.operator == LessEqual:
                 less = Dense(1, kernel_initializer=constant_initializer([-1, 1]), activation='relu', trainable=False)(previous_layer)
-                equal = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=one_minus_abs, trainable=False)\
+                equal = Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=KnowledgeModule.one_minus_abs, trainable=False)\
                     (previous_layer)
                 return Maximum()([less, equal])
             elif current_node.operator == Plus:
@@ -141,3 +129,15 @@ class KnowledgeNetwork:
                 return Dot(axes=1)([self.initialized_network(current_node=child) for child in current_node.children])
             else:
                 return Dense(1, activation=self.activation, trainable=False)(previous_layer)
+
+    @staticmethod
+    def my_abs(x):
+        return tf.minimum(1, tf.abs(x))
+
+    @staticmethod
+    def one_minus_abs(x):
+        return relu(1 - tf.abs(x))
+
+    @staticmethod
+    def negation(x):
+        return tf.abs(x - 1)

@@ -1,19 +1,18 @@
 import distutils.cmd
 from setuptools import setup, find_packages
-
 from psyki.fol import Parser
-from test import get_rules
 
 
 class RunExperiments(distutils.cmd.Command):
-    description = 'run injection experiments on poker hand dataset'
+    escription = 'run injection experiments on poker hand dataset'
     user_options = [('experiments=', 'E', 'number of experiments'),
                     ('epochs=', 'e', 'number of epochs per experiment'),
                     ('layers=', 'l', 'number of layer of the neural network'),
                     ('neurons=', 'n', 'number of neurons per layer'),
                     ('batch=', 'b', 'batch size'),
                     ('knowledge=', 'k', 'use knowledge [Y/n]'),
-                    ('prefix=', 'p', 'prefix of the experiment file that will be saved')]
+                    ('file=', 'f', 'name of the experiment file that will be saved'),
+                    ('rules=', 'r', 'number of rules to inject')]
 
     def initialize_options(self):
         self.experiments = 30
@@ -22,23 +21,36 @@ class RunExperiments(distutils.cmd.Command):
         self.neurons = 128
         self.batch_size = 32
         self.knowledge = 'Y'
-        self.prefix = ''
+        self.file = ''
+        self.rules = 10
 
     def finalize_options(self):
-        pass
+        self.experiments = int(self.experiments)
+        self.epochs = int(self.epochs)
+        self.layers = int(self.layers)
+        self.neurons = int(self.neurons)
+        self.batch_size = int(self.batch_size)
+        self.rules = int(self.rules)
+
+    def run(self):
+        option_values = [self.experiments, self.epochs, self.layers, self.neurons, self.batch_size, self.knowledge,
+                         self.file]
+        for i, option in enumerate(self.user_options):
+            print(option[0] + str(option_values[i]))
+
+
+class RunExperimentsConstraining(RunExperiments):
 
     def run(self):
         from tensorflow.keras import Model
         from tensorflow.keras import Input
         from tensorflow.keras.optimizers import Adam
         from psyki import Injector
-        from test import POKER_RULES, get_mlp, train_network, get_processed_dataset
+        from test import POKER_RULES_FUNCTIONS, get_mlp, train_network, get_processed_dataset
 
-        option_values = [self.experiments, self.epochs, self.layers, self.neurons, self.batch_size, self.knowledge, self.prefix]
-        for i, option in enumerate(self.user_options):
-            print(option[0] + str(option_values[i]))
+        super().run()
 
-        optimizer = Adam(learning_rate=0.001)
+        optimizer = Adam()
         train_x, train_y, test_x, test_y = get_processed_dataset('poker', validation=0.05)
 
         for i in range(self.experiments):
@@ -47,24 +59,68 @@ class RunExperiments(distutils.cmd.Command):
             network = get_mlp(net_input, output=10, layers=self.layers, neurons=self.neurons,
                               activation_function='relu',
                               last_activation_function='softmax')
-            main_file_name = str(self.layers) + '_N' + str(self.neurons) + '_E' + str(self.epochs) + '_B' + \
-                             str(self.batch_size) + '_I' + str(i + 1)
+            file = self.file + '/model' + str(i + 1)
+
             if self.knowledge.lower() == 'y':
-                file = self.prefix + 'injection_L' + main_file_name
                 injector = Injector(network, net_input)
-                injector.inject(POKER_RULES)
+                injector.inject(POKER_RULES_FUNCTIONS)
                 injector.predictor.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
                 model = injector.predictor
-
             else:
-                file = self.prefix + 'classic_L' + main_file_name
                 model = Model(net_input, network)
-                model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
             # Train the model with rules
+            model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
             model.summary()
             train_network(model, train_x, train_y, test_x, test_y, batch_size=self.batch_size, epochs=self.epochs,
                           file=file, knowledge=self.knowledge.lower() == 'y')
+
+
+class RunExperimentsStructuring(RunExperiments):
+
+    def run(self):
+        from tensorflow.keras import Model
+        from tensorflow.keras import Input
+        from tensorflow.keras.optimizers import Adam
+        from test import get_mlp, train_network, get_processed_dataset
+        from tensorflow.python.keras.layers import Dense, Concatenate
+        from test import POKER_INPUT_MAPPING
+        from test import POKER_RULES
+
+        optimizer = Adam()
+        train_x, train_y, test_x, test_y = get_processed_dataset('poker', validation=0.05)
+
+        for i in range(self.experiments):
+            print('Experiment ' + str(i+1) + '/' + str(self.experiments))
+            net_input = Input((10,), name='Input')
+            network = get_mlp(net_input, output=10, layers=self.layers, neurons=self.neurons,
+                              activation_function='relu',
+                              last_activation_function='softmax')
+            file = self.file + '/model' + str(i + 1)
+
+            if self.knowledge.lower() == 'y':
+                kns = RunExperimentsStructuring.create_knowledge_networks(POKER_RULES, Parser.extended_parser(),
+                                                                          net_input, POKER_INPUT_MAPPING)
+                main_network = Model(net_input, network).layers[-1].output
+                output = Dense(10, activation='softmax')((Concatenate(axis=1)([main_network] + kns[:self.rules])))
+                model = Model(net_input, output)
+            else:
+                model = Model(net_input, network)
+
+            model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+            model.summary()
+            train_network(model, train_x, train_y, test_x, test_y, self.batch_size, epochs=self.epochs, file=file)
+
+    @staticmethod
+    def create_knowledge_networks(rules: dict[str, str], parser: Parser, network_input, input_mapping) -> list:
+        from psyki import KnowledgeModule
+        result = []
+        trees = [parser.tree(rule, True) for _, rule in rules.items()]
+        for tree in trees:
+            kn = KnowledgeModule(tree, network_input, input_mapping)
+            network = kn.initialized_network()
+            result.append(network)
+        return result
 
 
 class TestAnalysis(distutils.cmd.Command):
@@ -92,8 +148,7 @@ class TestAnalysis(distutils.cmd.Command):
         from test import class_accuracy, f1
         from test.experiments import models, statistics
         from test import get_processed_dataset
-        from sklearn.metrics import confusion_matrix
-        from psyki import my_abs, one_minus_abs, negation
+        from psyki import KnowledgeModule
 
         option_values = [self.filename, self.min, self.max, self.save]
         for i, option in enumerate(self.user_options):
@@ -103,13 +158,13 @@ class TestAnalysis(distutils.cmd.Command):
         info = ["model;acc;f1;classes"]
         optimizer = Adam(learning_rate=0.001)
         for i in range(self.min - 1, self.max):
-            file_exp = self.filename + '_' + str(i) + '.h5' # if self.min != self.max else self.filename + '.h5'
+            file_exp = self.filename + '_' + str(i) + '.h5'
             file_exp = str(models.PATH / file_exp)
             print(file_exp)
-            model = load_model(file_exp, custom_objects={'my_abs': my_abs, 'one_minus_abs': one_minus_abs, 'negation': negation})
+            model = load_model(file_exp, custom_objects={'my_abs': KnowledgeModule.my_abs,
+                                                         'one_minus_abs': KnowledgeModule.one_minus_abs,
+                                                         'negation': KnowledgeModule.negation})
             model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-            # pred_y = model.predict(test_x)
-            # matrix = confusion_matrix(test_y, pred_y.argmax(axis=1))
             classes_accuracy = class_accuracy(model, test_x, test_y)
             macro_f1 = f1(model, test_x, test_y)
             info.append(
@@ -139,6 +194,8 @@ class ASTVisualizer(distutils.cmd.Command):
         self.flat = bool(self.flat)
 
     def run(self):
+        from test import get_rules
+
         rules = get_rules(self.filename)
         rule = rules[self.rule]
         parser = Parser.default_parser()
@@ -173,7 +230,8 @@ setup(
     zip_safe=False,
     platforms="Independant",
     cmdclass={
-        'run_experiments': RunExperiments,
+        'run_experiments_constraining': RunExperimentsConstraining,
+        'run_experiments_structuring': RunExperimentsStructuring,
         'run_test_evaluation': TestAnalysis,
         'run_ast_visualizer': ASTVisualizer
     },

@@ -18,10 +18,9 @@ from test.experiments import models
 from test.resources import get_rules, get_dataset, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING
 
 _parser = Parser.extended_parser()
-POKER_RULES = [_parser.get_function(rule, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING)
-               for _, rule in get_rules('poker').items()]
-POKER_RULES_2 = [_parser.get_function(rule, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING)
-               for _, rule in get_rules('poker2').items()]
+POKER_RULES_FUNCTIONS = [_parser.get_function(rule, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING)
+                         for _, rule in get_rules('poker').items()]
+POKER_RULES = get_rules('poker')
 
 
 def class_accuracy(_model, _x, _y) -> list:

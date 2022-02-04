@@ -18,6 +18,7 @@ def generate_table(file_names: list[str], file_save: str, names: list[str] = Non
     """
     Generate latex table entries for comparison
     """
+    file_names_copy = file_names.copy()
     file_names = [file_name + '.csv' for file_name in file_names]
     data = [read_csv(statistics.PATH / file_name, sep=';') for file_name in file_names]
     acc = 'acc'
@@ -29,8 +30,16 @@ def generate_table(file_names: list[str], file_save: str, names: list[str] = Non
             re.sub(r' \[\[', r'[', re.sub(r', \[', ', ', re.sub(r', [0-9]*\]', '', re.sub('[0-9]*] ', '', row))))) for
             row in d['classes']])
         mean_classes_acc = np.mean(classes, axis=0)
-        string_classes = ''.join((' & ' + str(round(mean_class_acc, 3)) for mean_class_acc in mean_classes_acc))
-        string = names[i] + ' & ' + str(round(np.mean(d[acc]),3)) + ' & ' + str(round(np.mean(d[f1]),3)) + string_classes + '\\\\'
+        stt = [student_t_test_class(file_names_copy[i], file_names_copy[0], j) for j in range(10)]
+        stt = [st[0] > 0 and st[1] < 0.05 for st in stt]
+        string_classes = ''.join((r' & \textbf{' + str(round(mean_class_acc, 3)) + '}' if stt[k] else ' & ' + str(round(mean_class_acc, 3)) for k, mean_class_acc in enumerate(mean_classes_acc)))
+        stt_acc = student_t_test(file_names_copy[i], file_names_copy[0])
+        stt_acc = stt_acc[0] > 0 and stt_acc[1] < 0.05
+        acc_v = r'\textbf{' + str(round(np.mean(d[acc]),3)) + '}' if stt_acc else str(round(np.mean(d[acc]),3))
+        stt_f1 = student_t_test(file_names_copy[i], file_names_copy[0], 'f1')
+        stt_f1 = stt_f1[0] > 0 and stt_f1[1] < 0.05
+        f1_v = r'\textbf{' + str(round(np.mean(d[f1]),3)) + '}' if stt_f1 else str(round(np.mean(d[f1]),3))
+        string = names[i] + ' & ' + acc_v + ' & ' + f1_v + string_classes + '\\\\'
         result.append(string)
     with open(str(statistics.PATH / file_save) + '.csv', 'w') as f:
         for row in result:
@@ -67,5 +76,10 @@ def student_t_test_class(file_name1: str, file_name2: str, class_index: int = 0,
 
 
 files = ['test_results_classic'] + ['test_result_structuring' + str(i) for i in range(1, 11)][::-1]
-labels = ['classic'] + [str(i) + ' rules' for i in range(1, 11)]
+labels = ['classic'] + ['$R_{' + str(i) + '}$' for i in range(1, 11)]
 generate_table(files, 'table_mean_structuring', labels)
+classic = files[0]
+injections = files[1:]
+'''for injection in injections:
+    print(injection)
+    print(student_t_test_class(injection, classic, 4))'''

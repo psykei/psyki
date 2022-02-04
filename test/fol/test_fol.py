@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 from psyki.fol.operators import *
 import tensorflow as tf
-from test import POKER_RULES
+from test import POKER_RULES_FUNCTIONS
 from test.resources import get_dataset
 
 
@@ -29,7 +29,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 9, 3, 10, 4, 7, 4, 9, 3, 8], dtype=tf.float32)
         output1 = tf.constant([1, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['nothing']]
+        function = POKER_RULES_FUNCTIONS[rule_index['nothing']]
 
         # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
@@ -39,7 +39,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 1, 2, 2, 4, 7, 4, 10, 3, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 1, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['twoPairs']]
+        function = POKER_RULES_FUNCTIONS[rule_index['twoPairs']]
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -48,7 +48,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 4, 1, 13, 4, 7, 4, 11, 4, 1], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 1, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['flush']]
+        function = POKER_RULES_FUNCTIONS[rule_index['flush']]
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -57,7 +57,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['full']]
+        function = POKER_RULES_FUNCTIONS[rule_index['full']]
 
         # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
@@ -66,7 +66,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 9, 4, 5, 4, 7, 2, 9, 3, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['poker']]
+        function = POKER_RULES_FUNCTIONS[rule_index['poker']]
 
         # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
@@ -76,7 +76,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 1, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['tris']]
+        function = POKER_RULES_FUNCTIONS[rule_index['tris']]
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -85,7 +85,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 2, 9], dtype=tf.float32)
         output1 = tf.constant([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['pair']]
+        function = POKER_RULES_FUNCTIONS[rule_index['pair']]
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -94,7 +94,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([1, 1, 4, 2, 2, 7, 4, 10, 3, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 1, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['straight']]
+        function = POKER_RULES_FUNCTIONS[rule_index['straight']]
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -110,7 +110,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 9, 3, 10, 4, 7, 4, 6, 3, 8], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['straightFlush']]
+        function = POKER_RULES_FUNCTIONS[rule_index['straightFlush']]
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -119,7 +119,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([1, 9, 1, 11, 1, 13, 1, 10, 1, 12], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['royalFlush']]
+        function = POKER_RULES_FUNCTIONS[rule_index['royalFlush']]
 
         # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
@@ -155,7 +155,7 @@ class TestFolOnDataset(unittest.TestCase):
 
     def test_fol(self):
         poker_training = get_dataset('poker-training')
-        functions = POKER_RULES
+        functions = POKER_RULES_FUNCTIONS
         train_x = poker_training[:, :-1]
         train_y = poker_training[:, -1]
         train_y = np.eye(10)[train_y.astype(int)]
