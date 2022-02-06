@@ -62,13 +62,13 @@ class Parser:
     @staticmethod
     def extended_parser():
         return Parser([L, LTX, LTY, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar, Implication, Exist,
-                       Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication, LessEqual, Pass,
+                       Disjunction, Plus, Negation, Numeric, Product, NotEqual, DoubleImplication, LessEqual, Pass,
                        LTEquivalence])
 
     @staticmethod
     def default_parser():
         return Parser([L, LTX, LTY, Equivalence, Conjunction, ReverseImplication, LeftPar, RightPar, Implication,
-                       Disjunction, Plus, Negation, Numeric, Product, Disequal, DoubleImplication, LessEqual, Pass,
+                       Disjunction, Plus, Negation, Numeric, Product, NotEqual, DoubleImplication, LessEqual, Pass,
                        LessEqual, Greater, LTEquivalence])
 
 
@@ -198,7 +198,6 @@ class Node:
         else:
             return False
 
-    # TODO: father is not working as expected
     def insert(self, lo: LogicOperator.__class__, arg: Any):
         done: bool = False
         for node in self.children:

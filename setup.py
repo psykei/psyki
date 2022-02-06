@@ -4,7 +4,7 @@ from psyki.fol import Parser
 
 
 class RunExperiments(distutils.cmd.Command):
-    escription = 'run injection experiments on poker hand dataset'
+    description = 'run injection experiments on poker hand dataset'
     user_options = [('experiments=', 'E', 'number of experiments'),
                     ('epochs=', 'e', 'number of epochs per experiment'),
                     ('layers=', 'l', 'number of layer of the neural network'),
@@ -38,15 +38,27 @@ class RunExperiments(distutils.cmd.Command):
         for i, option in enumerate(self.user_options):
             print(option[0] + str(option_values[i]))
 
+    def iteration_variables(self, i: int):
+        from tensorflow.keras import Input
+        from test import get_mlp
+
+        print('Experiment ' + str(i + 1) + '/' + str(self.experiments))
+        net_input = Input((10,), name='Input')
+        network = get_mlp(net_input, output=10, layers=self.layers, neurons=self.neurons,
+                          activation_function='relu',
+                          last_activation_function='softmax')
+        file = self.file + '/model' + str(i + 1)
+        return net_input, network, file
+
 
 class RunExperimentsConstraining(RunExperiments):
+    description = 'run injection with constraining experiments on poker hand dataset'
 
     def run(self):
         from tensorflow.keras import Model
-        from tensorflow.keras import Input
         from tensorflow.keras.optimizers import Adam
         from psyki import Injector
-        from test import POKER_RULES_FUNCTIONS, get_mlp, train_network, get_processed_dataset
+        from test import POKER_RULES_FUNCTIONS, train_network, get_processed_dataset
 
         super().run()
 
@@ -54,12 +66,7 @@ class RunExperimentsConstraining(RunExperiments):
         train_x, train_y, test_x, test_y = get_processed_dataset('poker', validation=0.05)
 
         for i in range(self.experiments):
-            print('Experiment ' + str(i+1) + '/' + str(self.experiments))
-            net_input = Input((10,), name='Input')
-            network = get_mlp(net_input, output=10, layers=self.layers, neurons=self.neurons,
-                              activation_function='relu',
-                              last_activation_function='softmax')
-            file = self.file + '/model' + str(i + 1)
+            net_input, network, file = self.iteration_variables(i)
 
             if self.knowledge.lower() == 'y':
                 injector = Injector(network, net_input)
@@ -77,30 +84,27 @@ class RunExperimentsConstraining(RunExperiments):
 
 
 class RunExperimentsStructuring(RunExperiments):
+    description = 'run injection with structuring experiments on poker hand dataset'
 
     def run(self):
         from tensorflow.keras import Model
-        from tensorflow.keras import Input
         from tensorflow.keras.optimizers import Adam
-        from test import get_mlp, train_network, get_processed_dataset
+        from test import train_network, get_processed_dataset
         from tensorflow.python.keras.layers import Dense, Concatenate
         from test import POKER_INPUT_MAPPING
         from test import POKER_RULES
+        from psyki import KnowledgeModule
+
+        super().run()
 
         optimizer = Adam()
         train_x, train_y, test_x, test_y = get_processed_dataset('poker', validation=0.05)
 
         for i in range(self.experiments):
-            print('Experiment ' + str(i+1) + '/' + str(self.experiments))
-            net_input = Input((10,), name='Input')
-            network = get_mlp(net_input, output=10, layers=self.layers, neurons=self.neurons,
-                              activation_function='relu',
-                              last_activation_function='softmax')
-            file = self.file + '/model' + str(i + 1)
+            net_input, network, file = self.iteration_variables(i)
 
             if self.knowledge.lower() == 'y':
-                kns = RunExperimentsStructuring.create_knowledge_networks(POKER_RULES, Parser.extended_parser(),
-                                                                          net_input, POKER_INPUT_MAPPING)
+                kns = KnowledgeModule.modules(POKER_RULES, Parser.extended_parser(), net_input, POKER_INPUT_MAPPING)
                 main_network = Model(net_input, network).layers[-1].output
                 output = Dense(10, activation='softmax')((Concatenate(axis=1)([main_network] + kns[:self.rules])))
                 model = Model(net_input, output)
@@ -110,17 +114,6 @@ class RunExperimentsStructuring(RunExperiments):
             model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
             model.summary()
             train_network(model, train_x, train_y, test_x, test_y, self.batch_size, epochs=self.epochs, file=file)
-
-    @staticmethod
-    def create_knowledge_networks(rules: dict[str, str], parser: Parser, network_input, input_mapping) -> list:
-        from psyki import KnowledgeModule
-        result = []
-        trees = [parser.tree(rule, True) for _, rule in rules.items()]
-        for tree in trees:
-            kn = KnowledgeModule(tree, network_input, input_mapping)
-            network = kn.initialized_network()
-            result.append(network)
-        return result
 
 
 class TestAnalysis(distutils.cmd.Command):

@@ -1,13 +1,12 @@
 from typing import Callable
-from collections import Iterable
 from tensorflow.keras import Model
-from tensorflow.python.keras.backend import shape, constant, relu
+from tensorflow.python.keras.backend import relu
 from tensorflow.python.keras.layers import Minimum, Maximum, Dot
 from tensorflow.python.ops.array_ops import gather
 from tensorflow.python.ops.init_ops_v2 import constant_initializer, Ones, Zeros
 import tensorflow as tf
-from psyki.fol import Node, Conjunction, Disjunction, Equivalence, Disequal, GreaterEqual, Greater, Less, LessEqual, \
-    Plus, Product, Numeric, Pass
+from psyki.fol import Node, Conjunction, Disjunction, Equivalence, NotEqual, GreaterEqual, Greater, Less, LessEqual, \
+    Plus, Product, Numeric, Pass, Parser
 from tensorflow.keras.layers import Concatenate, Lambda, Input, Dense
 from tensorflow.keras.models import load_model
 from tensorflow import Tensor, stack
@@ -82,6 +81,16 @@ class KnowledgeModule:
             previous_layer = Concatenate(axis=1)([self.network(current_node=child) for child in current_node.children])
             return Dense(1, activation=self.activation)(previous_layer)
 
+    @staticmethod
+    def modules(rules: dict[str, str], parser: Parser, network_input, input_mapping) -> list:
+        result = []
+        trees = [parser.tree(rule, True) for _, rule in rules.items()]
+        for tree in trees:
+            km = KnowledgeModule(tree, network_input, input_mapping)
+            network = km.initialized_network()
+            result.append(network)
+        return result
+
     def initialized_network(self, current_node=None):
         current_node = self.tree if current_node is None else current_node
         if len(current_node.children) == 0:
@@ -106,7 +115,7 @@ class KnowledgeModule:
                 return Maximum()([self.initialized_network(current_node=child) for child in current_node.children])
             elif current_node.operator == Equivalence:
                 return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=KnowledgeModule.one_minus_abs, trainable=False)(previous_layer)
-            elif current_node.operator == Disequal:
+            elif current_node.operator == NotEqual:
                 return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=KnowledgeModule.my_abs, trainable=False)\
                     (previous_layer)
             elif current_node.operator == Greater:
@@ -131,13 +140,17 @@ class KnowledgeModule:
                 return Dense(1, activation=self.activation, trainable=False)(previous_layer)
 
     @staticmethod
+    def eta(x):
+        return tf.minimum(1., tf.maximum(0., x))
+
+    @staticmethod
     def my_abs(x):
-        return tf.minimum(1, tf.abs(x))
+        return KnowledgeModule.eta(tf.abs(x))
 
     @staticmethod
     def one_minus_abs(x):
-        return relu(1 - tf.abs(x))
+        return KnowledgeModule.eta(1 - tf.abs(x))
 
     @staticmethod
     def negation(x):
-        return tf.abs(x - 1)
+        return KnowledgeModule.eta(tf.abs(x - 1))

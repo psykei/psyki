@@ -8,7 +8,7 @@ import tensorflow as tf
 CLASS_PRIORITY: int = 1000
 CONJUNCTION_PRIORITY: int = 100
 DEFAULT_PRIORITY: int = -1
-DISEQUAL_PRIORITY: int = 200
+NOT_EQUAL_PRIORITY: int = 200
 DISJUNCTION_PRIORITY: int = 100
 DOUBLE_IMPLICATION_PRIORITY: int = 0
 EQUIVALENCE_PRIORITY: int = 200
@@ -30,7 +30,7 @@ DEFAULT_NAME: str = 'Abstract logic operator'
 CLASS_X_NAME: str = 'Class X'
 CLASS_Y_NAME: str = 'Class y'
 CONJUNCTION_NAME: str = 'Conjunction operator'
-DISEQUAL_NAME: str = 'Disequal operator'
+NOT_EQUAL_NAME: str = 'Disequal operator'
 DISJUNCTION_NAME: str = 'Disjunction operator'
 DOUBLE_IMPLICATION_NAME: str = 'Double implication operator'
 EQUIVALENCE_NAME: str = 'Equivalence operator'
@@ -52,7 +52,7 @@ DEFAULT_REGEX: str = ''
 CLASS_X_REGEX: str = 'X'
 CLASS_Y_REGEX: str = '[a-z]+([A-Z]|[a-z]|[0-9])*'
 CONJUNCTION_REGEX: str = r'\^'
-DISEQUAL_REGEX: str = '!='
+NOT_EQUAL_REGEX: str = '!='
 DISJUNCTION_REGEX: str = r'\∨'  # this is \vee not a v!
 DOUBLE_IMPLICATION_REGEX: str = '<->'
 EQUIVALENCE_REGEX: str = '='
@@ -489,27 +489,27 @@ class Greater(Op2):
         super().__init__(l1, l2, GREATER_NAME)
 
     def compute(self) -> L:
-        return Conjunction(GreaterEqual(self.l1, self.l2).compute(), Disequal(self.l1, self.l2).compute()).compute()
+        return Conjunction(GreaterEqual(self.l1, self.l2).compute(), NotEqual(self.l1, self.l2).compute()).compute()
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicOperator._parse(GREATER_REGEX, string)
 
 
-class Disequal(Op2):
+class NotEqual(Op2):
 
-    priority: int = DISEQUAL_PRIORITY
-    name: str = DISEQUAL_NAME
+    priority: int = NOT_EQUAL_PRIORITY
+    name: str = NOT_EQUAL_NAME
 
     def __init__(self, l1: L, l2: L):
-        super().__init__(l1, l2, DISEQUAL_NAME)
+        super().__init__(l1, l2, NOT_EQUAL_NAME)
 
     def compute(self) -> L:
         return Negation(Equivalence(self.l1, self.l2).compute()).compute()
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
-        return LogicOperator._parse(DISEQUAL_REGEX, string)
+        return LogicOperator._parse(NOT_EQUAL_REGEX, string)
 
 
 class Less(Op2):
