@@ -9,7 +9,6 @@ class Parser:
 
     def __init__(self, accepted_operators: Iterable[LogicOperator.__class__]):
         self.accepted_operators = accepted_operators
-        self.last_tree = None
 
     def parse(self, string: str) -> list[tuple[LogicOperator.__class__, Any]]:
         results = []
@@ -33,7 +32,6 @@ class Parser:
         tree = AST()
         for term in terms:
             tree.insert(term[0], term[1])
-        self.last_tree = tree.root.copy()
         return tree.root.call(input_mapping, output_mapping)
 
     def tree(self, rule, flat=False, full=False):

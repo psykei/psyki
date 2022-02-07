@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+from tensorflow.python.framework.ops import disable_eager_execution
 from tensorflow.python.keras import Input, Model
 from tensorflow.python.keras.layers import Concatenate
 from psyki import KnowledgeModule, Parser
@@ -10,6 +11,7 @@ import tensorflow as tf
 class TestInjectionWithModules(unittest.TestCase):
 
     def test_modules_evaluation(self):
+        disable_eager_execution()
         net_input = Input((10,), name='Input')
         kms = KnowledgeModule.modules(POKER_RULES, Parser.extended_parser(), net_input, POKER_INPUT_MAPPING)
         network = Model(net_input, Concatenate(axis=1)(kms))
