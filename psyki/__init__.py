@@ -1,6 +1,5 @@
 from typing import Callable
 from tensorflow.keras import Model
-from tensorflow.python.keras.backend import relu
 from tensorflow.python.keras.layers import Minimum, Maximum, Dot
 from tensorflow.python.ops.array_ops import gather
 from tensorflow.python.ops.init_ops_v2 import constant_initializer, Ones, Zeros

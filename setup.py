@@ -84,7 +84,7 @@ class RunExperimentsConstraining(RunExperiments):
 
 
 class RunExperimentsStructuring(RunExperiments):
-    description = 'run injection with structuring experiments on poker hand dataset'
+    description = 'run injection with structuring1 experiments on poker hand dataset'
 
     def run(self):
         from tensorflow.keras import Model

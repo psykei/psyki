@@ -143,7 +143,7 @@ def metric_distribution(files: list[str], names: list[str], col_name='acc', clas
 
 """
 experiments_file_names = ['test_results_classic', 'test_result_structuring7', 'test_result_structuring8', 'test_result_structuring9']
-short_names = ['classic', 'Struct. 4 r.', 'Struct. 3 r.', 'Struct. 2 r.']
+short_names = ['classic', 'Struct. 7 r.', 'Struct. 8 r.', 'Struct. 9 r.']
 title = 'class accuracy distributions'
 colors1 = ['red', 'blue', 'darkgreen', 'darkorange']
 colors2 = ['salmon', 'cyan', 'lightgreen', 'bisque']
@@ -172,7 +172,7 @@ for i in range(10):
     accuracy_boxplot_comparison(titles[i], i, files[i])
 
 '''colors = [color.hex for color in list(Color("red").range_to(Color("blue"), 11))]
-experiments_file_names = ['classic/model'] + ['structuring' + str(i) + '/model' for i in range(1, 11)][::-1]
+experiments_file_names = ['classic/model'] + ['structuring1' + str(i) + '/model' for i in range(1, 11)]
 # short_names = ['classic'] + ['R' + str(i) for i in range(1, 11)]
 title = 'Accuracy distributions'
 history_plot_comparison(experiments_file_names, title, colors)'''
