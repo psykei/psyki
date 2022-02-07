@@ -3,13 +3,16 @@
 ## Intro
 
 PSyKI (Platform for Symbolic Knowledge Injection) is intended to be a library for injection symbolic knowledge into sub-symbolic predictors.
-At the moment PSyKe offers a FOL interpreter for rules expressed in Skolem normal form and a general injection technique for neural networks (NN).
+At the moment PSyKe offers a FOL interpreter for rules expressed in Skolem normal form and two general injection techniques for neural networks (NN):
+- one method uses constraining (i.e. cost penalties during training when rules are violated);
+- second method is based on structuring (i.e. the NN has inner ad-hoc modules that evaluate the truth degree of a FOL).
 
-An `Injector` is an object capable of provide rules to a NN with method `inject`.
-Rules are textual FOL rules that are processed into fuzzy logic functions.
-To convert textual rules user can use method `get_function` of class `Parser`.
+An `Injector` is an object capable of injecting symbolic knowledge into a NN with method `inject`.
+A `ConstrainInjector` embeds textual FOL rules into fuzzy logic functions used to calculate the penalties to add during training.
+To convert textual rules user can use method `function` of class `Parser`.
+A `StructuringInjector` embeds textual FOL rules into network modules capable of evaluating the truth degree of the formulae themselves.
 
-User must provide in addition to the textual rule two mappings:
+User must provide in addition to the textual rule two mappings (for constraining, only features mapping for structuring):
 
 - variables' names and their indices (corresponding to vector input position of the NN).
 For example, network predicts iris class from 4 ordered features: sepal length (SL), sepal width (SW), petal length (PL) and petal width (PW).
@@ -40,7 +43,6 @@ class_mapping = {
 - tensorflow 2.6.2+
 - scikit-learn 1.0.1+
 - numpy 1.21.4+
-- keras 2.7.0+
 - pandas 1.3.4+
 - scipy 1.7.1+
 
@@ -73,9 +75,9 @@ PL > 2.28 ^ PW > 1.64 <- X |= virginica
 PL > 2.28 ^ PW <= 1.64 <- X |= versicolor
 ```
 
-### Demo
+### Demo (constraining)
 
-`demo.ipynb` is a notebook that shows how injection is applied to a network for iris classification task.
+`demo_constraining.ipynb` is a notebook that shows how injection via constraining is applied to a network for iris classification task.
 Rules are defined in `resources/rules/iris.csv`.
 
 
@@ -118,10 +120,16 @@ Trainable params: 1,315
 Non-trainable params: 0
 ```
 
+### Demo (structuring)
+
+`demo_structuring.ipynb` is a notebook that shows how injection via structuring is applied to a network for iris classification task.
+Rules are defined in `resources/rules/iris.csv`.
+The file is organized in a similar way of the previous demo.
+
 ### Experiments
 
-Command `python setup.py run_experiments` trains neural networks to classify poker hands using injection of FOL rules.
-Run `python setup.py --help run_experiments` for more details.
+Command `python setup.py run_experiments_constraining` or `python setup.py run_experiments_structuring` trains neural networks to classify poker hands using injection of FOL rules.
+Run `python setup.py --help run_experiments_[constraining|structuring]` for more details.
 Rules are provided in `resources/rules/poker.csv`.
 The usage of rules raises execution time w.r.t. the same network configuration.
 With:

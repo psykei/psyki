@@ -19,14 +19,12 @@ class Injector:
         self.input = input
         self.use_knowledge: bool = False
         self.rules: list = []
-        self.active_rule: list = []
         self.gamma = gamma
         self.output = output_shape
 
-    def inject(self, rules: list[Callable], active_rule: list[Callable] = None) -> None:
+    def inject(self, rules: list[Callable]) -> None:
         self.use_knowledge = True
         self.rules = rules
-        self.active_rule = active_rule
         x = Concatenate(axis=1, name='Concatenate')([self.input, self.original_predictor])
         x = Lambda(self._knowledge_function, self.output, name='Knowledge')(x)
         self.predictor = Model(self.input, x)
@@ -66,7 +64,6 @@ class KnowledgeModule:
         self.tree = tree
         self.input = network_input
         self.input_mapping = input_mapping
-        # self.tree.prune_constants()
         self.activation = 'tanh'
 
     def network(self, current_node=None):
@@ -106,6 +103,7 @@ class KnowledgeModule:
             return Dense(1, kernel_initializer=Ones, activation=KnowledgeModule.negation, trainable=False)\
                 (self.initialized_network(current_node=current_node.children[0]))
         else:
+            # TODO: refactor all this block to improve readability and extendability
             previous_layer = Concatenate(axis=1)\
                 ([self.initialized_network(current_node=child) for child in current_node.children])
             if current_node.operator == Conjunction:

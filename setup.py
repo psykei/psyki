@@ -184,7 +184,7 @@ class ASTVisualizer(distutils.cmd.Command):
         self.flat = False
 
     def finalize_options(self):
-        self.flat = bool(self.flat)
+        self.flat = self.flat == 'True'
 
     def run(self):
         from test import get_rules
