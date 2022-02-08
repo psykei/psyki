@@ -1,8 +1,8 @@
 import os
 import numpy as np
 import tensorflow as tf
-from keras.callbacks import CSVLogger, ModelCheckpoint
-from keras.layers import Dense
+from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
+from tensorflow.keras.layers import Dense
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder

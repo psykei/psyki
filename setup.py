@@ -22,13 +22,16 @@ class RunExperiments(distutils.cmd.Command):
         self.prefix = ''
 
     def finalize_options(self):
-        pass
+        self.experiments = int(self.experiments)
+        self.epochs = int(self.epochs)
+        self.layers = int(self.layers)
+        self.neurons = int(self.neurons)
+        self.batch_size = int(self.batch_size)
 
     def run(self):
-        from keras import Model
-        from tensorflow.keras import Input
+        from tensorflow.keras import Input, Model
         from tensorflow.keras.activations import softmax
-        from keras.optimizer_v2.adam import Adam
+        from tensorflow.keras.optimizers import Adam
         from psyki import Injector
         from test import POKER_RULES, get_mlp, train_network, get_processed_dataset
 
@@ -79,18 +82,19 @@ class TestAnalysis(distutils.cmd.Command):
                     ]
 
     def initialize_options(self):
-        self.filename = 'R2/injection_L3_N128_E100_B32'
+        self.filename = 'classic/model_L3_N128_E100_B32_I'
         self.min = 1
         self.max = 30
-        self.save = 'test_results'
+        self.save = 'dummy'
 
     def finalize_options(self):
-        pass
+        self.min = int(self.min)
+        self.max = int(self.max)
 
     def run(self):
         import os
-        from keras.models import load_model
-        from keras.optimizer_v2.adam import Adam
+        from tensorflow.keras.models import load_model
+        from tensorflow.keras.optimizers import Adam
         from test import class_accuracy, f1
         from test.experiments import models, statistics
         from test import get_processed_dataset
@@ -103,7 +107,7 @@ class TestAnalysis(distutils.cmd.Command):
         info = ["model;acc;f1;classes"]
         optimizer = Adam(learning_rate=0.001)
         for i in range(self.min - 1, self.max):
-            file_exp = self.filename + '_I' + str(i + 1) + '.h5'
+            file_exp = self.filename + str(i + 1) + '.h5'
             file_exp = str(models.PATH / file_exp)
             print(file_exp)
             model = load_model(file_exp)

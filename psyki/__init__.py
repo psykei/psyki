@@ -1,8 +1,7 @@
 from typing import Callable
-import keras
 import tensorflow as tf
-from keras import Model
-from keras.layers import Concatenate, Lambda
+from tensorflow.keras import Model
+from tensorflow.keras.layers import Concatenate, Lambda
 from tensorflow import Tensor
 
 
