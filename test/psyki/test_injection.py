@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 from tensorflow.python.keras import Input, Model
 from tensorflow.python.keras.layers import Concatenate
-from psyki import KnowledgeModule, Parser
+from psyki import StructuringInjector, Parser
 from test import POKER_RULES, POKER_INPUT_MAPPING, get_dataset
 import tensorflow as tf
 
@@ -11,9 +11,9 @@ class TestInjectionWithModules(unittest.TestCase):
 
     def test_modules_evaluation(self):
         net_input = Input((10,), name='Input')
-        kms = KnowledgeModule.modules(POKER_RULES, Parser.extended_parser(), net_input, POKER_INPUT_MAPPING)
-        network = Model(net_input, Concatenate(axis=1)(kms))
-
+        injector = StructuringInjector(Parser.extended_parser())
+        modules = injector.modules(POKER_RULES, net_input, POKER_INPUT_MAPPING)
+        network = Model(net_input, Concatenate(axis=1)(modules))
         poker_training = get_dataset('poker-training')
         train_x = poker_training[:, :-1]
         train_y = np.eye(10)[poker_training[:, -1].astype(int)]

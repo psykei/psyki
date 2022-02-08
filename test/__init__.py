@@ -1,7 +1,6 @@
 import os
 from os.path import dirname, isdir
 from pathlib import Path
-
 import numpy as np
 from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
 from tensorflow.keras.layers import Dense
@@ -11,7 +10,6 @@ from sklearn.preprocessing import OneHotEncoder
 from tensorflow import Tensor
 from tensorflow.python.keras import Model
 from tensorflow.python.keras.callbacks import Callback
-
 from psyki.fol import Parser
 from test.experiments import statistics
 from test.experiments import models

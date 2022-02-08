@@ -34,7 +34,7 @@ class RunExperiments(distutils.cmd.Command):
 
     def run(self):
         option_values = [self.experiments, self.epochs, self.layers, self.neurons, self.batch_size, self.knowledge,
-                         self.file]
+                         self.file, self.rules]
         for i, option in enumerate(self.user_options):
             print(option[0] + str(option_values[i]))
 
@@ -51,38 +51,6 @@ class RunExperiments(distutils.cmd.Command):
         return net_input, network, file
 
 
-class RunExperimentsConstraining(RunExperiments):
-    description = 'run injection with constraining experiments on poker hand dataset'
-
-    def run(self):
-        from tensorflow.keras import Model
-        from tensorflow.keras.optimizers import Adam
-        from psyki import Injector
-        from test import POKER_RULES_FUNCTIONS, train_network, get_processed_dataset
-
-        super().run()
-
-        optimizer = Adam()
-        train_x, train_y, test_x, test_y = get_processed_dataset('poker', validation=0.05)
-
-        for i in range(self.experiments):
-            net_input, network, file = self.iteration_variables(i)
-
-            if self.knowledge.lower() == 'y':
-                injector = Injector(network, net_input)
-                injector.inject(POKER_RULES_FUNCTIONS)
-                injector.predictor.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                model = injector.predictor
-            else:
-                model = Model(net_input, network)
-
-            # Train the model with rules
-            model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-            model.summary()
-            train_network(model, train_x, train_y, test_x, test_y, batch_size=self.batch_size, epochs=self.epochs,
-                          file=file, knowledge=self.knowledge.lower() == 'y')
-
-
 class RunExperimentsStructuring(RunExperiments):
     description = 'run injection with structuring1 experiments on poker hand dataset'
 
@@ -90,10 +58,9 @@ class RunExperimentsStructuring(RunExperiments):
         from tensorflow.keras import Model
         from tensorflow.keras.optimizers import Adam
         from test import train_network, get_processed_dataset
-        from tensorflow.python.keras.layers import Dense, Concatenate
         from test import POKER_INPUT_MAPPING
         from test import POKER_RULES
-        from psyki import KnowledgeModule
+        from psyki import StructuringInjector
 
         super().run()
 
@@ -104,10 +71,9 @@ class RunExperimentsStructuring(RunExperiments):
             net_input, network, file = self.iteration_variables(i)
 
             if self.knowledge.lower() == 'y':
-                kns = KnowledgeModule.modules(POKER_RULES, Parser.extended_parser(), net_input, POKER_INPUT_MAPPING)
-                main_network = Model(net_input, network).layers[-1].output
-                output = Dense(10, activation='softmax')((Concatenate(axis=1)([main_network] + kns[:self.rules])))
-                model = Model(net_input, output)
+                main_network = Model(net_input, network).layers[-2].output
+                injector = StructuringInjector(Parser.extended_parser())
+                model = injector.inject(POKER_RULES, net_input, main_network, 10, 'softmax', POKER_INPUT_MAPPING)
             else:
                 model = Model(net_input, network)
 
@@ -136,12 +102,11 @@ class TestAnalysis(distutils.cmd.Command):
 
     def run(self):
         import os
-        from tensorflow.keras.models import load_model
         from tensorflow.keras.optimizers import Adam
         from test import class_accuracy, f1
         from test.experiments import models, statistics
         from test import get_processed_dataset
-        from psyki import KnowledgeModule
+        from psyki import StructuringInjector
 
         option_values = [self.filename, self.min, self.max, self.save]
         for i, option in enumerate(self.user_options):
@@ -154,9 +119,7 @@ class TestAnalysis(distutils.cmd.Command):
             file_exp = self.filename + '_' + str(i) + '.h5'
             file_exp = str(models.PATH / file_exp)
             print(file_exp)
-            model = load_model(file_exp, custom_objects={'my_abs': KnowledgeModule.my_abs,
-                                                         'one_minus_abs': KnowledgeModule.one_minus_abs,
-                                                         'negation': KnowledgeModule.negation})
+            model = StructuringInjector.load_model(file_exp)
             model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
             classes_accuracy = class_accuracy(model, test_x, test_y)
             macro_f1 = f1(model, test_x, test_y)
@@ -223,7 +186,6 @@ setup(
     zip_safe=False,
     platforms="Independant",
     cmdclass={
-        'run_experiments_constraining': RunExperimentsConstraining,
         'run_experiments_structuring': RunExperimentsStructuring,
         'run_test_evaluation': TestAnalysis,
         'run_ast_visualizer': ASTVisualizer
