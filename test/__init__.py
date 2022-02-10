@@ -1,8 +1,4 @@
-import os
-from os.path import dirname, isdir
-from pathlib import Path
 import numpy as np
-from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
 from tensorflow.keras.layers import Dense
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
@@ -10,13 +6,11 @@ from sklearn.preprocessing import OneHotEncoder
 from tensorflow import Tensor
 from tensorflow.python.keras import Model
 from tensorflow.python.keras.callbacks import Callback
-from psyki.fol import Parser
-from test.experiments import statistics
-from test.experiments import models
+from psyki.logic import Parser
 from test.resources import get_rules, get_dataset, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING
 
-_parser = Parser.extended_parser()
-POKER_RULES_FUNCTIONS = [_parser.get_function(rule, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING)
+PARSER = Parser.default_parser()
+POKER_RULES_FUNCTIONS = [PARSER.function(rule, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING)
                          for _, rule in get_rules('poker').items()]
 POKER_RULES = get_rules('poker')
 
@@ -85,7 +79,7 @@ class CustomCallback(Callback):
             model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
             model.save(self.file)
 
-
+'''
 def train_network(network, train_x, train_y, test_x, test_y, batch_size: int, epochs: int, file: str = None, knowledge=False):
     extension = '.h5'
     if file is None:
@@ -112,3 +106,4 @@ def save_network_from_injector(injector, file):
         file = 'experiment' + str(len([name for name in os.listdir(statistics.PATH)]) - 1)
     file = str(models.PATH / file) + '.h5'
     injector.save(file)
+'''

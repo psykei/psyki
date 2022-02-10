@@ -11,7 +11,7 @@ class TestInjectionWithModules(unittest.TestCase):
 
     def test_modules_evaluation(self):
         net_input = Input((10,), name='Input')
-        injector = StructuringInjector(Parser.extended_parser())
+        injector = StructuringInjector(None)
         modules = injector.modules(POKER_RULES, net_input, POKER_INPUT_MAPPING)
         network = Model(net_input, Concatenate(axis=1)(modules))
         poker_training = get_dataset('poker-training')

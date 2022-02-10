@@ -1,6 +1,6 @@
 import distutils.cmd
 from setuptools import setup, find_packages
-from psyki.fol import Parser
+from psyki.logic import Parser
 
 
 class RunExperiments(distutils.cmd.Command):
@@ -73,7 +73,7 @@ class RunExperimentsStructuring(RunExperiments):
 
             if self.knowledge.lower() == 'y':
                 main_network = Model(net_input, network).layers[-2].output
-                injector = StructuringInjector(Parser.extended_parser())
+                injector = StructuringInjector(Parser.default_parser())
                 model = injector.inject(POKER_RULES, net_input, main_network, 10, 'softmax', POKER_INPUT_MAPPING)
             else:
                 model = Model(net_input, network)
@@ -154,7 +154,7 @@ class ASTVisualizer(distutils.cmd.Command):
         rules = get_rules(self.filename)
         rule = rules[self.rule]
         parser = Parser.default_parser()
-        print(parser.tree(rule, self.flat, True))
+        print(parser.structure(rule, self.flat, True))
 
 
 setup(
