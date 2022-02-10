@@ -141,7 +141,7 @@ class Skip(Function2):
     priority: int = IMPLICATION_PRIORITY
 
     def compute(self) -> Variable:
-        return Variable(tf.zeros(tf.shape(self.l2.value())[0]))
+        return Variable(tf.zeros(tf.shape(self.l2.value)[0]))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -169,6 +169,7 @@ class Variable(LogicElement):
     def compute(self) -> Variable:
         return self
 
+    @property
     def value(self) -> Tensor:
         return self.x
 
@@ -432,7 +433,7 @@ class Plus(Function2):
         super().__init__(l1, l2)
 
     def compute(self) -> Variable:
-        return Variable(self.l1.value() + self.l2.value())
+        return Variable(self.l1.value + self.l2.value)
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -447,7 +448,7 @@ class Product(Function2):
         super().__init__(l1, l2)
 
     def compute(self) -> Variable:
-        return Variable(self.l1.value() * self.l2.value())
+        return Variable(self.l1.value * self.l2.value)
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -496,11 +497,10 @@ class OutputEquivalence(Function2):
         """
         :return: the maximum element wise equivalence value between the two tensors.
         """
-        xy = tf.stack([self.l1.x,
-                       tf.tile(tf.reshape(self.l2.x, [1, self.l2.x.shape[0]]), [tf.shape(self.l1.x)[0], 1])],
-                      axis=1)
+        xy = tf.stack([self.l1.x, tf.tile(tf.reshape(self.l2.x, [1, self.l2.x.shape[0]]),
+                                          [tf.shape(self.l1.x)[0], 1])], axis=1)
         element_wise_equivalence = tf.map_fn(lambda x: Equivalence(Variable(x[0, :]),
-                                                                   Variable(x[1, :])).compute().value(), xy)
+                                                                   Variable(x[1, :])).compute().value, xy)
         result = tf.reduce_max(element_wise_equivalence, axis=1)
         return Variable(eta(result))
 

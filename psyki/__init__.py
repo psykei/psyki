@@ -14,8 +14,37 @@ class Injector:
         self.predictor = predictor
         self.parser = parser
 
-    def inject(self, rules: dict[str, str], activation, input_mapping: dict, output_mapping: dict = None):
+    def inject(self, rules: dict[str, str], activation, input_mapping: dict, output_mapping: dict = None) -> None:
         abstract_method_exception()
+
+    @property
+    def network_input(self) -> Tensor:
+        return self.predictor.layers[0].input
+
+
+class ConstrainingInjector(Injector):
+
+    def __init__(self, predictor, parser: Parser = Parser.default_parser(), gamma: float = 1.):
+        super().__init__(predictor, parser)
+        self.gamma = gamma
+        self._functions = None
+
+    def inject(self, rules: dict[str, str], activation, input_mapping: dict, output_mapping: dict = None) -> None:
+        self._functions = [self.parser.function(rule, input_mapping, output_mapping) for _, rule in rules.items()]
+        network_output: Tensor = self.predictor.layers[-1].output
+        x = Concatenate(axis=1)([self.network_input, network_output])
+        x = Lambda(self._cost_function, self.predictor.output.shape)(x)
+        self.predictor = Model(self.network_input, x)
+
+    def remove(self):
+        self.predictor = Model(self.network_input, self.predictor.layers[-3].output)
+
+    def _cost_function(self, layer_output: Tensor) -> Tensor:
+        input_len = self.network_input.shape[1]
+        x, y = layer_output[:, :input_len], layer_output[:, input_len:]
+        cost_tensor = tf.stack([expression(x, y).value for expression in self._functions], axis=1)
+        result = y + (cost_tensor / self.gamma)
+        return result
 
 
 class StructuringInjector(Injector):
@@ -24,17 +53,17 @@ class StructuringInjector(Injector):
         super().__init__(predictor, parser)
 
     def inject(self, rules: dict[str, str], activation, input_mapping, output_mapping=None) -> None:
-        network_input: Tensor = self.predictor.layers[0].input  # self.predictor.input
         network_output: Tensor = self.predictor.layers[-2].output
+        modules = self.modules(rules, self.network_input, input_mapping)
         neurons: int = self.predictor.layers[-1].output.shape[1]
-        modules = self.modules(rules, network_input, input_mapping)
         new_network = Dense(neurons, activation=activation)(Concatenate(axis=1)([network_output] + list(modules)))
-        self.predictor = Model(network_input, new_network)
+        self.predictor = Model(self.network_input, new_network)
 
     def modules(self, rules: dict[str, str], network_input, input_mapping) -> Iterable:
         trees = [self.parser.structure(rule, True) for _, rule in rules.items()]
         return [self.module(tree, network_input, input_mapping) for tree in trees]
 
+    # TODO: refactor all this block to improve readability and extendability
     def module(self, tree, network_input, input_mapping, current_node=None):
         current_node = tree if current_node is None else current_node
         if len(current_node.children) == 0:
@@ -52,7 +81,6 @@ class StructuringInjector(Injector):
             return Dense(1, kernel_initializer=Ones, activation=StructuringInjector.negation, trainable=False) \
                 (self.module(tree, network_input, input_mapping, current_node.children[0]))
         else:
-            # TODO: refactor all this block to improve readability and extendability
             previous_layer = Concatenate(axis=1) \
                 ([self.module(tree, network_input, input_mapping, child) for child in current_node.children])
             if current_node.logic_element == Conjunction:
