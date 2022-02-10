@@ -47,7 +47,7 @@ class RunExperiments(distutils.cmd.Command):
         net_input = Input((10,), name='Input')
         network = get_mlp(net_input, output=10, layers=self.layers, neurons=self.neurons,
                           activation_function='relu',
-                          last_activation_function='softmax')
+                          activation='softmax')
         file = self.file + '/model' + str(i + 1)
         return net_input, network, file
 

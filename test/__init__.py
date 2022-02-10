@@ -55,14 +55,14 @@ def get_processed_dataset(name: str, validation: float = 1.0):
     return train_x, train_y, test_x, test_y
 
 
-def get_mlp(input: Tensor, output: int, layers: int, neurons: int, activation_function, last_activation_function):
+def get_mlp(input: Tensor, output: int, layers: int, neurons: int, activation_function, activation):
     """
     Generate a NN with the given parameters
     """
     x = Dense(neurons, activation=activation_function, name='L_1')(input)
     for i in range(2, layers):
         x = Dense(neurons, activation=activation_function, name='L_' + str(i))(x)
-    return Dense(output, activation=last_activation_function, name='L_' + str(layers))(x)
+    return Model(input, Dense(output, activation=activation, name='L_' + str(layers))(x))
 
 
 class CustomCallback(Callback):

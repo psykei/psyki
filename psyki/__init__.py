@@ -23,13 +23,13 @@ class StructuringInjector(Injector):
     def __init__(self, predictor, parser: Parser = Parser.default_parser()):
         super().__init__(predictor, parser)
 
-    def inject(self, rules: dict[str, str], activation, input_mapping, output_mapping=None):
-        network_input: Tensor = self.predictor.input
+    def inject(self, rules: dict[str, str], activation, input_mapping, output_mapping=None) -> None:
+        network_input: Tensor = self.predictor.layers[0].input  # self.predictor.input
         network_output: Tensor = self.predictor.layers[-2].output
-        neurons: int = self.predictor.layers[-1].output
+        neurons: int = self.predictor.layers[-1].output.shape[1]
         modules = self.modules(rules, network_input, input_mapping)
-        return Model(network_input,
-                     Dense(neurons, activation=activation)(Concatenate(axis=1)([network_output] + list(modules))))
+        new_network = Dense(neurons, activation=activation)(Concatenate(axis=1)([network_output] + list(modules)))
+        self.predictor = Model(network_input, new_network)
 
     def modules(self, rules: dict[str, str], network_input, input_mapping) -> Iterable:
         trees = [self.parser.structure(rule, True) for _, rule in rules.items()]
