@@ -30,9 +30,8 @@ class TestInjectionWithModules(unittest.TestCase):
         injector.inject(POKER_RULES, 'softmax', POKER_INPUT_MAPPING)
         injector.predictor.compile('adam', loss='categorical_crossentropy', metrics=['accuracy'])
         injector.predictor.fit(self.train_x, self.train_y, batch_size=32, epochs=10)
-        accuracy = injector.predictor.evaluate(self.train_x, self.train_y)
+        accuracy = injector.predictor.evaluate(self.train_x, self.train_y)[1]
         self.assertTrue(accuracy > 0.99)
-
 
     @staticmethod
     def zeros_except_max_value(row):
