@@ -1,5 +1,6 @@
 import distutils.cmd
 from setuptools import setup, find_packages
+from psyki.fol import Parser
 
 
 class RunExperiments(distutils.cmd.Command):
@@ -10,7 +11,8 @@ class RunExperiments(distutils.cmd.Command):
                     ('neurons=', 'n', 'number of neurons per layer'),
                     ('batch=', 'b', 'batch size'),
                     ('knowledge=', 'k', 'use knowledge [Y/n]'),
-                    ('prefix=', 'p', 'prefix of the experiment file that will be saved')]
+                    ('file=', 'f', 'name of the experiment file that will be saved'),
+                    ('rules=', 'r', 'number of rules to inject')]
 
     def initialize_options(self):
         self.experiments = 30
@@ -19,7 +21,8 @@ class RunExperiments(distutils.cmd.Command):
         self.neurons = 128
         self.batch_size = 32
         self.knowledge = 'Y'
-        self.prefix = ''
+        self.file = ''
+        self.rules = 10
 
     def finalize_options(self):
         self.experiments = int(self.experiments)
@@ -27,50 +30,57 @@ class RunExperiments(distutils.cmd.Command):
         self.layers = int(self.layers)
         self.neurons = int(self.neurons)
         self.batch_size = int(self.batch_size)
+        self.rules = int(self.rules)
 
     def run(self):
-        from tensorflow.keras import Input, Model
-        from tensorflow.keras.activations import softmax
-        from tensorflow.keras.optimizers import Adam
-        from psyki import Injector
-        from test import POKER_RULES, get_mlp, train_network, get_processed_dataset
+        option_values = [self.experiments, self.epochs, self.layers, self.neurons, self.batch_size, self.knowledge,
+                         self.file, self.rules]
 
-        option_values = [self.experiments, self.epochs, self.layers, self.neurons, self.batch_size, self.knowledge, self.prefix]
         for i, option in enumerate(self.user_options):
             print(option[0] + str(option_values[i]))
 
-        optimizer = Adam(learning_rate=0.001)
+    def iteration_variables(self, i: int):
+        from tensorflow.keras import Input
+        from test import get_mlp
+
+        print('Experiment ' + str(i + 1) + '/' + str(self.experiments))
+        net_input = Input((10,), name='Input')
+        network = get_mlp(net_input, output=10, layers=self.layers, neurons=self.neurons,
+                          activation_function='relu',
+                          last_activation_function='softmax')
+        file = self.file + '/model' + str(i + 1)
+        return net_input, network, file
+
+
+class RunExperimentsStructuring(RunExperiments):
+    description = 'run injection with structuring1 experiments on poker hand dataset'
+
+    def run(self):
+        from tensorflow.keras import Model
+        from tensorflow.keras.optimizers import Adam
+        from test import train_network, get_processed_dataset
+        from test import POKER_INPUT_MAPPING
+        from test import POKER_RULES
+        from psyki import StructuringInjector
+
+        super().run()
+
+        optimizer = Adam()
         train_x, train_y, test_x, test_y = get_processed_dataset('poker', validation=0.05)
 
         for i in range(self.experiments):
-            print('Experiment ' + str(i+1) + '/' + str(self.experiments))
-            net_input = Input((10,), name='Input')
-            network = get_mlp(net_input, output=10, layers=self.layers, neurons=self.neurons,
-                              activation_function='relu',
-                              last_activation_function='softmax')
-            main_file_name = str(self.layers) + '_N' + str(self.neurons) + '_E' + str(self.epochs) + '_B' + \
-                             str(self.batch_size) + '_I' + str(i + 1)
-            if self.knowledge.lower() == 'y':
-                file = self.prefix + 'injection_L' + main_file_name
-                injector = Injector(network, net_input, softmax)
-                injector.inject(POKER_RULES)
-                injector.predictor.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                model = injector.predictor
+            net_input, network, file = self.iteration_variables(i)
 
+            if self.knowledge.lower() == 'y':
+                main_network = Model(net_input, network).layers[-2].output
+                injector = StructuringInjector(Parser.extended_parser())
+                model = injector.inject(POKER_RULES, net_input, main_network, 10, 'softmax', POKER_INPUT_MAPPING)
             else:
-                file = self.prefix + 'classic_L' + main_file_name
                 model = Model(net_input, network)
-                model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-            # Train the model with rules
+            model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
             model.summary()
-            train_network(model, train_x, train_y, test_x, test_y, batch_size=self.batch_size, epochs=self.epochs, file=file)
-
-            # Save the base network without knowledge layer
-            if self.knowledge.lower() == 'y':
-                model = Model(inputs=model.net_input, outputs=model.layers[-3].output)
-                model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                model.save(file)
+            train_network(model, train_x, train_y, test_x, test_y, self.batch_size, epochs=self.epochs, file=file)
 
 
 class TestAnalysis(distutils.cmd.Command):
@@ -82,10 +92,10 @@ class TestAnalysis(distutils.cmd.Command):
                     ]
 
     def initialize_options(self):
-        self.filename = 'classic/model_L3_N128_E100_B32_I'
+        self.filename = 'structuring1/model'
         self.min = 1
         self.max = 30
-        self.save = 'dummy'
+        self.save = 'test_results_stucturing'
 
     def finalize_options(self):
         self.min = int(self.min)
@@ -93,11 +103,10 @@ class TestAnalysis(distutils.cmd.Command):
 
     def run(self):
         import os
-        from tensorflow.keras.models import load_model
         from tensorflow.keras.optimizers import Adam
         from test import class_accuracy, f1
-        from test.experiments import models, statistics
         from test import get_processed_dataset
+        from psyki import StructuringInjector
 
         option_values = [self.filename, self.min, self.max, self.save]
         for i, option in enumerate(self.user_options):
@@ -107,10 +116,9 @@ class TestAnalysis(distutils.cmd.Command):
         info = ["model;acc;f1;classes"]
         optimizer = Adam(learning_rate=0.001)
         for i in range(self.min - 1, self.max):
-            file_exp = self.filename + str(i + 1) + '.h5'
-            file_exp = str(models.PATH / file_exp)
+            file_exp = self.filename + '_' + str(i) + '.h5'
             print(file_exp)
-            model = load_model(file_exp)
+            model = StructuringInjector.load_model(file_exp)
             model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
             classes_accuracy = class_accuracy(model, test_x, test_y)
             macro_f1 = f1(model, test_x, test_y)
@@ -120,9 +128,33 @@ class TestAnalysis(distutils.cmd.Command):
                 str(macro_f1) + '; ' +
                 str(classes_accuracy)
             )
-        with open(str(statistics.PATH / self.save) + '.csv', 'w') as f:
+        with open(self.save + '.csv', 'w') as f:
             for row in info:
                 f.write("%s\n" % row)
+
+
+class ASTVisualizer(distutils.cmd.Command):
+    description = 'Print the ast of a rule'
+    user_options = [('file=', 'f', 'file name of the rules'),
+                    ('rule=', 'r', 'name of the rule'),
+                    ('flat=', 'f', 'flat ast'),
+                    ]
+
+    def initialize_options(self):
+        self.filename = 'poker'
+        self.rule = 'pair'
+        self.flat = False
+
+    def finalize_options(self):
+        self.flat = self.flat == 'True'
+
+    def run(self):
+        from test import get_rules
+
+        rules = get_rules(self.filename)
+        rule = rules[self.rule]
+        parser = Parser.default_parser()
+        print(parser.tree(rule, self.flat, True))
 
 
 setup(
@@ -153,7 +185,8 @@ setup(
     zip_safe=False,
     platforms="Independant",
     cmdclass={
-        'run_experiments': RunExperiments,
-        'run_test_evaluation': TestAnalysis
+        'run_experiments_structuring': RunExperimentsStructuring,
+        'run_test_evaluation': TestAnalysis,
+        'run_ast_visualizer': ASTVisualizer
     },
 )
