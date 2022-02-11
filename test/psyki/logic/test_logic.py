@@ -103,7 +103,7 @@ class TestFol(unittest.TestCase):
         hand3 = tf.constant([1, 1, 4, 11, 2, 13, 4, 10, 3, 12], dtype=tf.float32)
         hand3 = tf.tile(tf.reshape(hand3, [1, 10]), [1, 1])
         output1 = tf.tile(tf.reshape(output1, [1, 10]), [1, 1])
-        result = function(hand3, output1).value()
+        result = function(hand3, output1).value
         tf.assert_equal(result, tf.tile(tf.reshape(Variable.true(), [1, 1]), [1, 1]))
 
     def test_straight_flush(self):
@@ -145,10 +145,10 @@ class TestFol(unittest.TestCase):
         hand2 = tf.tile(tf.reshape(hand2, [1, 10]), [1, 1])
         output1 = tf.tile(tf.reshape(output1, [1, 10]), [1, 1])
         output2 = tf.tile(tf.reshape(output2, [1, 10]), [1, 1])
-        result1 = tf.reshape(function(hand1, output1).value(), [1, 1])
-        result2 = tf.reshape(function(hand2, output1).value(), [1, 1])
-        result3 = tf.reshape(function(hand1, output2).value(), [1, 1])
-        result4 = tf.reshape(function(hand2, output2).value(), [1, 1])
+        result1 = tf.reshape(function(hand1, output1).value, [1, 1])
+        result2 = tf.reshape(function(hand2, output1).value, [1, 1])
+        result3 = tf.reshape(function(hand1, output2).value, [1, 1])
+        result4 = tf.reshape(function(hand2, output2).value, [1, 1])
         return result1, result2, result3, result4
 
 
@@ -162,7 +162,7 @@ class TestFolOnDataset(unittest.TestCase):
         train_y = np.eye(10)[train_y.astype(int)]
         ten_zeros = tf.reshape(tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32), [1, 10])
         x, y = tf.cast(train_x, dtype=tf.float32), tf.cast(train_y, dtype=tf.float32)
-        result = tf.stack([tf.reshape(function(x, y).value(), [x.shape[0], ]) for function in functions], axis=1)
+        result = tf.stack([tf.reshape(function(x, y).value, [x.shape[0], ]) for function in functions], axis=1)
         tf.assert_equal(result, tf.tile(ten_zeros, [train_x.shape[0], 1]))
 
 

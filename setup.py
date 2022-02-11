@@ -46,8 +46,8 @@ class RunExperiments(distutils.cmd.Command):
         print('Experiment ' + str(i + 1) + '/' + str(self.experiments))
         net_input = Input((10,), name='Input')
         network = get_mlp(net_input, output=10, layers=self.layers, neurons=self.neurons,
-                          activation_function='relu',
-                          activation='softmax')
+                          hidden_activation='relu',
+                          last_activation='softmax')
         file = self.file + '/model' + str(i + 1)
         return net_input, network, file
 

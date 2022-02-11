@@ -1,5 +1,6 @@
 from __future__ import annotations
 import re
+from abc import ABC
 from tensorflow.keras.backend import constant
 from tensorflow.python.types.core import Tensor
 import tensorflow as tf
@@ -19,7 +20,7 @@ IMPLICATION_PRIORITY: int = 0
 LESS_EQUAL_PRIORITY: int = 200
 LESS_PRIORITY: int = 200
 NEGATION_PRIORITY: int = 300
-NUMERIC_PRIORITY: int = 1000
+CONSTANT_PRIORITY: int = 1000
 PAR_PRIORITY: int = 5000
 PLUS_PRIORITY: int = 400
 PRODUCT_PRIORITY: int = 500
@@ -41,7 +42,7 @@ LEFT_PAR_REGEX: str = r'\('
 LESS_EQUAL_REGEX: str = '<='
 LT_EQUIVALENCE_REGEX: str = r'\|='
 NEGATION_REGEX: str = r'\~'
-NUMERIC_REGEX: str = '[+-]?([0-9]*[.])?[0-9]+'
+CONSTANT_REGEX: str = '[+-]?([0-9]*[.])?[0-9]+'
 PLUS_REGEX: str = '[+]'
 PRODUCT_REGEX: str = r'\*'
 REVERSE_IMPLICATION_REGEX: str = r'<-(?!>)'
@@ -51,7 +52,7 @@ SKIP_REGEX: str = r'/'
 VARIABLE_REGEX: str = r'^(?!' + CLASS_X_REGEX + ')[A-Z]([a-z]|[A-Z])*[0-9]*'
 
 
-class LogicElement:
+class LogicElement(ABC):
     arity: int = 0
     priority: int = DEFAULT_PRIORITY
 
@@ -103,7 +104,7 @@ class RightPar(LogicElement):
         return LogicElement._parse(RIGHT_PAR_REGEX, string)
 
 
-class Function2(LogicElement):
+class Function2(LogicElement, ABC):
 
     arity: int = 2
 
@@ -122,7 +123,7 @@ class Function2(LogicElement):
         return Function2(self.l1, self.l2)
 
 
-class Function1(LogicElement):
+class Function1(LogicElement, ABC):
 
     arity: int = 1
 
@@ -188,7 +189,7 @@ class Variable(LogicElement):
 
 class Constant(Variable):
 
-    priority: int = NUMERIC_PRIORITY
+    priority: int = CONSTANT_PRIORITY
 
     def __init__(self, x: str):
         """
@@ -200,7 +201,7 @@ class Constant(Variable):
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
-        return LogicElement._parse(NUMERIC_REGEX, string)
+        return LogicElement._parse(CONSTANT_REGEX, string)
 
 
 class Equivalence(Function2):

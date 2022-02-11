@@ -4,8 +4,8 @@ from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from tensorflow import Tensor
-from tensorflow.python.keras import Model
-from tensorflow.python.keras.callbacks import Callback
+from tensorflow.keras import Model
+from tensorflow.keras.callbacks import Callback
 from psyki.logic import Parser
 from test.resources import get_rules, get_dataset, POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING
 
@@ -55,14 +55,14 @@ def get_processed_dataset(name: str, validation: float = 1.0):
     return train_x, train_y, test_x, test_y
 
 
-def get_mlp(input: Tensor, output: int, layers: int, neurons: int, activation_function, activation):
+def get_mlp(net_input: Tensor, output: int, layers: int, neurons: int, hidden_activation, last_activation):
     """
     Generate a NN with the given parameters
     """
-    x = Dense(neurons, activation=activation_function, name='L_1')(input)
-    for i in range(2, layers):
-        x = Dense(neurons, activation=activation_function, name='L_' + str(i))(x)
-    return Model(input, Dense(output, activation=activation, name='L_' + str(layers))(x))
+    x = Dense(neurons, activation=hidden_activation)(net_input)
+    for _ in range(2, layers):
+        x = Dense(neurons, activation=hidden_activation)(x)
+    return Model(net_input, Dense(output, activation=last_activation)(x))
 
 
 class CustomCallback(Callback):

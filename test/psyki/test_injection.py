@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 from tensorflow.python.framework.random_seed import set_random_seed
-from tensorflow.python.keras import Input, Model
-from tensorflow.python.keras.layers import Concatenate
+from tensorflow.keras import Input, Model
+from tensorflow.keras.layers import Concatenate
 from psyki import StructuringInjector, ConstrainingInjector
 from test import POKER_RULES, POKER_INPUT_MAPPING, get_dataset, get_mlp, POKER_OUTPUT_MAPPING
 import tensorflow as tf
@@ -26,7 +26,7 @@ class TestInjectionWithModules(unittest.TestCase):
     def test_network_evaluation(self):
         set_random_seed(123)
         net_input = Input((10,))
-        network = get_mlp(net_input, output=10, layers=3, neurons=128, activation_function='relu', activation='softmax')
+        network = get_mlp(net_input, output=10, layers=3, neurons=128, hidden_activation='relu', last_activation='softmax')
         injector = StructuringInjector(network)
         injector.inject(POKER_RULES, 'softmax', POKER_INPUT_MAPPING)
         compile_fit(injector.predictor, self.train_x, self.train_y)
@@ -43,15 +43,13 @@ class TestInjectionWithConstraining(unittest.TestCase):
     def test_network_evaluation(self):
         set_random_seed(123)
         net_input = Input((10,))
-        network = get_mlp(net_input, output=10, layers=3, neurons=128, activation_function='relu', activation='softmax')
+        network = get_mlp(net_input, output=10, layers=3, neurons=128, hidden_activation='relu', last_activation='softmax')
         injector = ConstrainingInjector(network)
         injector.inject(POKER_RULES, 'softmax', POKER_INPUT_MAPPING, POKER_OUTPUT_MAPPING)
         compile_fit(injector.predictor, self.train_x, self.train_y)
         injector.remove()
         compile(injector.predictor)
         accuracy = injector.predictor.evaluate(self.train_x, self.train_y)[1]
-
-        print(accuracy)
 
         self.assertTrue(accuracy > 0.60)
 

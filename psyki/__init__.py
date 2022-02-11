@@ -1,3 +1,4 @@
+from abc import ABC
 from tensorflow.keras import Model
 from tensorflow.python.keras.layers import Minimum, Maximum, Dot
 from tensorflow.python.keras.models import load_model
@@ -8,13 +9,20 @@ from tensorflow.keras.layers import Concatenate, Lambda, Dense
 from psyki.utils import eta
 
 
-class Injector:
+class Injector(ABC):
 
     def __init__(self, predictor, parser: Parser = Parser.default_parser()):
         self.predictor = predictor
         self.parser = parser
 
     def inject(self, rules: dict[str, str], activation, input_mapping: dict, output_mapping: dict = None) -> None:
+        """
+        Inject symbolic knowledge in form of logic rules into the predictor.
+        :param rules: rules to be injected
+        :param activation: activation function of the output level
+        :param input_mapping: mapping between features and variables
+        :param output_mapping: mapping between classes and constants
+        """
         abstract_method_exception()
 
     @property
