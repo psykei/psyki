@@ -82,12 +82,12 @@ class AST:
         return str(self.root)
 
     # TODO: think a better way to do this.
-    def insert(self, lo: LogicElement.__class__, arg: Any) -> None:
+    def insert(self, element: LogicElement.__class__, arg: str) -> None:
         # If there is already an open left par call insert on the tmp ast
         if self._tmp_ast is not None:
-            self._tmp_ast.insert(lo, arg)
+            self._tmp_ast.insert(element, arg)
         # If there is a right par close the tmp ast
-        elif lo == RightPar and self._parent_ast is not None:
+        elif element == RightPar and self._parent_ast is not None:
             # If the parent ast is not empty append this ast as the rightmost child of the first incomplete node
             if self._parent_ast.root is not None:
                 incomplete_node = self._parent_ast.root._first_incomplete_node()
@@ -101,24 +101,24 @@ class AST:
                 self._parent_ast.root = self.root
             self._parent_ast._tmp_ast = None
         # Create a new tmp ast if there is a left par
-        elif lo == LeftPar:
+        elif element == LeftPar:
             self._tmp_ast = AST(self)
         # Base case: empty AST
         elif self.root is None:
-            self.root = Node(lo, arg)
+            self.root = Node(element, arg)
         # If there is a variable in the root change it with the new lo, the variable become a child
         elif self.root.logic_element == Variable or issubclass(self.root.logic_element, Variable):
-            self.root = Node(lo, arg, [self.root])
+            self.root = Node(element, arg, [self.root])
         # If ast is not complete
         elif not self.root.is_complete:
-            self.root.insert(lo, arg)
+            self.root.insert(element, arg)
         # Add element as new root if AST is complete and there is no priority
-        elif self.root.is_complete and lo.priority <= self.root.logic_element.priority:
-            self.root = Node(lo, arg, [self.root])
+        elif self.root.is_complete and element.priority <= self.root.logic_element.priority:
+            self.root = Node(element, arg, [self.root])
         # Change rightmost child if there is priority and AST is complete
-        elif self.root.is_complete and lo.priority > self.root.logic_element.priority:
+        elif self.root.is_complete and element.priority > self.root.logic_element.priority:
             rightmost_child = self.root.children[-1]
-            new_node = Node(lo, arg, [rightmost_child], self.root)
+            new_node = Node(element, arg, [rightmost_child], self.root)
             rightmost_child.father = new_node
             self.root.children[-1] = new_node
 

@@ -1,10 +1,13 @@
 from __future__ import annotations
 import re
-from abc import ABC
+from abc import ABC, abstractmethod
 from tensorflow.keras.backend import constant
+from tensorflow.keras.layers import Dense, Minimum, Maximum, Dot, Lambda
+from tensorflow.python.ops.array_ops import gather
+from tensorflow.python.ops.init_ops import constant_initializer, Ones, Zeros
 from tensorflow.python.types.core import Tensor
 import tensorflow as tf
-from psyki.utils import abstract_method_exception, eta
+from psyki.utils import abstract_method_exception, eta, eta_one_abs, eta_abs_one, eta_abs
 
 CLASS_PRIORITY: int = 1000
 CONJUNCTION_PRIORITY: int = 100
@@ -52,9 +55,22 @@ SKIP_REGEX: str = r'/'
 VARIABLE_REGEX: str = r'^(?!' + CLASS_X_REGEX + ')[A-Z]([a-z]|[A-Z])*[0-9]*'
 
 
-class LogicElement(ABC):
+class Element(ABC):
     arity: int = 0
     priority: int = DEFAULT_PRIORITY
+
+    @staticmethod
+    def _parse(regex: str, string: str) -> tuple[bool, str]:
+        match = re.match(pattern=regex, string=string)
+        return (True, string[match.span()[0]:match.span()[1]]) if match is not None and match.pos == 0 else (False, '')
+
+    @staticmethod
+    @abstractmethod
+    def parse(string: str):
+        return abstract_method_exception()
+
+
+class LogicElement(Element, ABC):
 
     def __str__(self):
         return self.__class__.__name__
@@ -62,50 +78,41 @@ class LogicElement(ABC):
     def __repr__(self):
         return self.__class__.__name__
 
+    @abstractmethod
     def __eq__(self, other):
         return abstract_method_exception()
 
+    @abstractmethod
     def __hash__(self):
         return abstract_method_exception()
 
-    def copy(self) -> LogicElement:
-        return abstract_method_exception()
-
+    @abstractmethod
     def compute(self) -> LogicElement:
         return abstract_method_exception()
 
-    @property
-    def value(self) -> Tensor:
+    @staticmethod
+    @abstractmethod
+    def layer(previous_layer=None):
         return abstract_method_exception()
 
-    @staticmethod
-    def parse(string: str):
-        return abstract_method_exception()
 
-    @staticmethod
-    def _parse(regex: str, string: str) -> tuple[bool, str]:
-        match = re.match(pattern=regex, string=string)
-        return (True, string[match.span()[0]:match.span()[1]]) if match is not None and match.pos == 0 else (False, '')
-
-
-class LeftPar(LogicElement):
+class LeftPar(Element):
     priority: int = PAR_PRIORITY
 
     @staticmethod
     def parse(string: str):
-        return LogicElement._parse(LEFT_PAR_REGEX, string)
+        return Element._parse(LEFT_PAR_REGEX, string)
 
 
-class RightPar(LogicElement):
+class RightPar(Element):
     priority: int = PAR_PRIORITY
 
     @staticmethod
     def parse(string: str):
-        return LogicElement._parse(RIGHT_PAR_REGEX, string)
+        return Element._parse(RIGHT_PAR_REGEX, string)
 
 
 class Function2(LogicElement, ABC):
-
     arity: int = 2
 
     def __init__(self, l1: Variable, l2: Variable):
@@ -119,12 +126,11 @@ class Function2(LogicElement, ABC):
     def __hash__(self):
         return hash(str(self)) + hash(self.l1) + hash(self.l2)
 
-    def copy(self) -> LogicElement:
-        return Function2(self.l1, self.l2)
+    def compute(self) -> Variable:
+        return abstract_method_exception()
 
 
 class Function1(LogicElement, ABC):
-
     arity: int = 1
 
     def __init__(self, v: Variable):
@@ -137,12 +143,19 @@ class Function1(LogicElement, ABC):
     def __hash__(self):
         return hash(str(self)) + hash(self.v)
 
+    def compute(self) -> Variable:
+        return abstract_method_exception()
+
 
 class Skip(Function2):
     priority: int = IMPLICATION_PRIORITY
 
     def compute(self) -> Variable:
         return Variable(tf.zeros(tf.shape(self.l2.value)[0]))
+
+    @staticmethod
+    def layer(previous_layer=None):
+        return Dense(1, kernel_initializer=Zeros, bias_initializer=constant_initializer(0))(previous_layer)
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -162,13 +175,18 @@ class Variable(LogicElement):
         self.x = x
 
     def __hash__(self):
-        return hash(str(self)) + self.x.__hash__()
+        return hash(str(self)) + hash(self.x)
 
-    def copy(self) -> LogicElement:
-        return Variable(self.x)
+    def __eq__(self, other: Variable):
+        return self.x == other.x
 
     def compute(self) -> Variable:
         return self
+
+    @staticmethod
+    def layer(previous_layer=None):
+        index, input_layer = previous_layer
+        return Lambda(lambda x: gather(x, [index], axis=1))(input_layer)
 
     @property
     def value(self) -> Tensor:
@@ -200,6 +218,12 @@ class Constant(Variable):
         super().__init__(tf.constant(float(x)))
 
     @staticmethod
+    def layer(previous_layer=None):
+        value, input_layer = previous_layer
+        return Dense(1, kernel_initializer=Zeros, bias_initializer=constant_initializer(value),
+                     trainable=False, activation='linear')(input_layer)
+
+    @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(CONSTANT_REGEX, string)
 
@@ -216,6 +240,11 @@ class Equivalence(Function2):
 
     def compute(self) -> Variable:
         return Variable(eta(tf.abs(self.l1.x - self.l2.x)))
+
+    @staticmethod
+    def layer(previous_layer=None):
+        return Dense(1, kernel_initializer=constant_initializer([1, -1]),
+                     activation=eta_one_abs, trainable=False)(previous_layer)
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -242,6 +271,10 @@ class Implication(Function2):
         return Variable(eta(self.l2.x - self.l1.x))
 
     @staticmethod
+    def layer(previous_layer=None):
+        pass
+
+    @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(IMPLICATION_REGEX, string)
 
@@ -264,6 +297,10 @@ class ReverseImplication(Function2):
 
     def compute(self) -> Variable:
         return Variable(eta(self.l1.x - self.l2.x))
+
+    @staticmethod
+    def layer(previous_layer=None):
+        pass
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -290,6 +327,10 @@ class DoubleImplication(Function2):
         return Variable(eta(tf.abs(self.l1.x - self.l2.x)))
 
     @staticmethod
+    def layer(previous_layer=None):
+        pass
+
+    @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(DOUBLE_IMPLICATION_REGEX, string)
 
@@ -307,8 +348,9 @@ class Negation(Function1):
     def compute(self) -> Variable:
         return Variable(Variable.false() - eta(self.v.x))
 
-    def copy(self) -> LogicElement:
-        return Negation(self.v)
+    @staticmethod
+    def layer(previous_layer=None):
+        return Dense(1, kernel_initializer=Ones, activation=eta_abs_one, trainable=False)(previous_layer)
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -329,6 +371,10 @@ class Conjunction(Function2):
         return Variable(tf.maximum(self.l1.x, self.l2.x))
 
     @staticmethod
+    def layer(previous_layer=None):
+        return Minimum()(previous_layer)
+
+    @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(CONJUNCTION_REGEX, string)
 
@@ -347,6 +393,10 @@ class Disjunction(Function2):
         return Variable(tf.minimum(self.l1.x, self.l2.x))
 
     @staticmethod
+    def layer(previous_layer=None):
+        return Maximum()(previous_layer)
+
+    @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(DISJUNCTION_REGEX, string)
 
@@ -360,6 +410,10 @@ class GreaterEqual(Function2):
 
     def compute(self) -> Variable:
         return Variable(eta(Variable.false() - eta(self.l1.x - self.l2.x)))
+
+    @staticmethod
+    def layer(previous_layer=None):
+        return Maximum()([Greater.layer(previous_layer), Equivalence.layer(previous_layer)])
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -377,6 +431,10 @@ class Greater(Function2):
         return Conjunction(GreaterEqual(self.l1, self.l2).compute(), NotEqual(self.l1, self.l2).compute()).compute()
 
     @staticmethod
+    def layer(previous_layer=None):
+        return Dense(1, kernel_initializer=constant_initializer([1, -1]), activation=eta, trainable=False)(previous_layer)
+
+    @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(GREATER_REGEX, string)
 
@@ -390,6 +448,11 @@ class NotEqual(Function2):
 
     def compute(self) -> Variable:
         return Negation(Equivalence(self.l1, self.l2).compute()).compute()
+
+    @staticmethod
+    def layer(previous_layer=None):
+        return Dense(1, kernel_initializer=constant_initializer([1, -1]),
+                     activation=eta_abs, trainable=False)(previous_layer)
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -407,6 +470,11 @@ class Less(Function2):
         return Negation(GreaterEqual(self.l1, self.l2).compute()).compute()
 
     @staticmethod
+    def layer(previous_layer=None):
+        return Dense(1, kernel_initializer=constant_initializer([-1, 1]),
+                     activation=eta, trainable=False)(previous_layer)
+
+    @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(LESS_REGEX, string)
 
@@ -420,6 +488,10 @@ class LessEqual(Function2):
 
     def compute(self) -> Variable:
         return Negation(Greater(self.l1, self.l2).compute()).compute()
+
+    @staticmethod
+    def layer(previous_layer=None):
+        return Maximum()([Less.layer(previous_layer), Equivalence.layer(previous_layer)])
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -437,6 +509,10 @@ class Plus(Function2):
         return Variable(self.l1.value + self.l2.value)
 
     @staticmethod
+    def layer(previous_layer=None):
+        return Dense(1, kernel_initializer=Ones(), activation='linear', trainable=False)(previous_layer)
+
+    @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(PLUS_REGEX, string)
 
@@ -452,11 +528,15 @@ class Product(Function2):
         return Variable(self.l1.value * self.l2.value)
 
     @staticmethod
+    def layer(previous_layer=None):
+        return Dot(axes=1)(previous_layer)
+
+    @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(PRODUCT_REGEX, string)
 
 
-class Output(Variable):
+class Output(Variable, ABC):
 
     priority: int = CLASS_PRIORITY
 
@@ -476,12 +556,20 @@ class OutputVariable(Output):
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(CLASS_X_REGEX, string)
 
+    @staticmethod
+    def layer(previous_layer=None):
+        pass
+
 
 class OutputConstant(Output):
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
         return LogicElement._parse(CLASS_Y_REGEX, string)
+
+    @staticmethod
+    def layer(previous_layer=None):
+        pass
 
 
 class OutputEquivalence(Function2):
@@ -504,6 +592,10 @@ class OutputEquivalence(Function2):
                                                                    Variable(x[1, :])).compute().value, xy)
         result = tf.reduce_max(element_wise_equivalence, axis=1)
         return Variable(eta(result))
+
+    @staticmethod
+    def layer(previous_layer=None):
+        pass
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
