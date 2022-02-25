@@ -1,45 +1,42 @@
 import unittest
 import numpy as np
+from antlr4 import CommonTokenStream, InputStream
+from psyki.datalog import Fuzzifier
 from psyki.fol.operators import *
 import tensorflow as tf
-from test import POKER_RULES
-from test.resources import get_dataset
+from resources.dist.resources.DatalogLexer import DatalogLexer
+from resources.dist.resources.DatalogParser import DatalogParser
+from test import POKER_FEATURE_MAPPING, POKER_CLASS_MAPPING
+from test.resources import get_dataset, get_list_rules
+
+true = tf.tile(tf.reshape(constant(0.), [1, 1]), [1, 1])
+false = tf.tile(tf.reshape(constant(1.), [1, 1]), [1, 1])
+
+fuzzifier = Fuzzifier(POKER_CLASS_MAPPING, POKER_FEATURE_MAPPING)
+rules = get_list_rules('poker-new')
+formulae = {rule: DatalogParser(CommonTokenStream(DatalogLexer(InputStream(rule)))) for rule in rules}
+for _, rule in formulae.items():
+    fuzzifier.visit(rule.formula())
 
 
-rule_index = {
-        'nothing': 0,
-        'pair': 1,
-        'twoPairs': 2,
-        'tris': 3,
-        'straight': 4,
-        'flush': 5,
-        'full': 6,
-        'poker': 7,
-        'straightFlush': 8,
-        'royalFlush': 9
-    }
-true = tf.tile(tf.reshape(L.true(), [1, 1]), [1, 1])
-false = tf.tile(tf.reshape(L.false(), [1, 1]), [1, 1])
-
-
-class TestFol(unittest.TestCase):
+class TestDatalog(unittest.TestCase):
 
     def test_nothing(self):
         hand1 = tf.constant([2, 6, 2, 1, 4, 13, 2, 4, 4, 9], dtype=tf.float32)
         hand2 = tf.constant([4, 9, 3, 10, 4, 7, 4, 9, 3, 8], dtype=tf.float32)
         output1 = tf.constant([1, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['nothing']]
+        function = fuzzifier.classes['nothing']
 
         # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
-    def test_two_pairs(self):
+    def test_two(self):
         hand1 = tf.constant([4, 9, 2, 2, 4, 2, 4, 6, 3, 9], dtype=tf.float32)
         hand2 = tf.constant([4, 1, 2, 2, 4, 7, 4, 10, 3, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 1, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['twoPairs']]
+        function = fuzzifier.classes['two']
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -48,7 +45,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 4, 1, 13, 4, 7, 4, 11, 4, 1], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 1, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['flush']]
+        function = fuzzifier.classes['flush']
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -57,26 +54,27 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 4, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['full']]
+        function = fuzzifier.classes['full']
 
         # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
-    def test_poker(self):
+
+    def test_four(self):
         hand1 = tf.constant([4, 9, 1, 9, 4, 7, 2, 9, 3, 9], dtype=tf.float32)
         hand2 = tf.constant([4, 9, 4, 5, 4, 7, 2, 9, 3, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['poker']]
+        function = fuzzifier.classes['four']
 
         # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
-    def test_tris(self):
+    def test_three(self):
         hand1 = tf.constant([4, 9, 4, 2, 4, 7, 3, 9, 1, 9], dtype=tf.float32)
         hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 1, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 1, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['tris']]
+        function = fuzzifier.classes['three']
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -85,7 +83,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([4, 1, 4, 2, 4, 7, 4, 10, 2, 9], dtype=tf.float32)
         output1 = tf.constant([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 1, 0, 0, 0, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['pair']]
+        function = fuzzifier.classes['pair']
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -94,7 +92,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([1, 1, 4, 2, 2, 7, 4, 10, 3, 9], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 1, 0, 0, 0, 0, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['straight']]
+        function = fuzzifier.classes['straight']
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -102,15 +100,15 @@ class TestFol(unittest.TestCase):
         hand3 = tf.constant([1, 1, 4, 11, 2, 13, 4, 10, 3, 12], dtype=tf.float32)
         hand3 = tf.tile(tf.reshape(hand3, [1, 10]), [1, 1])
         output1 = tf.tile(tf.reshape(output1, [1, 10]), [1, 1])
-        result = function(hand3, output1).get_value()
-        tf.assert_equal(result, tf.tile(tf.reshape(L.true(), [1, 1]), [1, 1]))
+        result = function(hand3, output1)
+        tf.assert_equal(result, true)
 
     def test_straight_flush(self):
         hand1 = tf.constant([4, 9, 4, 10, 4, 7, 4, 6, 4, 8], dtype=tf.float32)
         hand2 = tf.constant([4, 9, 3, 10, 4, 7, 4, 6, 3, 8], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 1, 0, 0, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['straightFlush']]
+        function = fuzzifier.classes['straight_flush']
 
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
 
@@ -119,7 +117,7 @@ class TestFol(unittest.TestCase):
         hand2 = tf.constant([1, 9, 1, 11, 1, 13, 1, 10, 1, 12], dtype=tf.float32)
         output1 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=tf.float32)
         output2 = tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 1, 0], dtype=tf.float32)
-        function = POKER_RULES[rule_index['royalFlush']]
+        function = fuzzifier.classes['royal_flush']
 
         # self._test_double_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
         self._test_reverse_implication_hand_output_combinations(function, hand1, hand2, output1, output2)
@@ -144,10 +142,10 @@ class TestFol(unittest.TestCase):
         hand2 = tf.tile(tf.reshape(hand2, [1, 10]), [1, 1])
         output1 = tf.tile(tf.reshape(output1, [1, 10]), [1, 1])
         output2 = tf.tile(tf.reshape(output2, [1, 10]), [1, 1])
-        result1 = tf.reshape(function(hand1, output1).get_value(), [1, 1])
-        result2 = tf.reshape(function(hand2, output1).get_value(), [1, 1])
-        result3 = tf.reshape(function(hand1, output2).get_value(), [1, 1])
-        result4 = tf.reshape(function(hand2, output2).get_value(), [1, 1])
+        result1 = tf.reshape(function(hand1, output1), [1, 1])
+        result2 = tf.reshape(function(hand2, output1), [1, 1])
+        result3 = tf.reshape(function(hand1, output2), [1, 1])
+        result4 = tf.reshape(function(hand2, output2), [1, 1])
         return result1, result2, result3, result4
 
 
@@ -155,7 +153,7 @@ class TestFolOnDataset(unittest.TestCase):
 
     def test_fol(self):
         poker_training = get_dataset('poker-training')
-        functions = POKER_RULES
+        functions = [fuzzifier.classes[name] for name in sorted(POKER_CLASS_MAPPING.keys(), key=lambda i: i[1])]
         train_x = poker_training[:, :-1]
         train_y = poker_training[:, -1]
         train_y = np.eye(10)[train_y.astype(int)]

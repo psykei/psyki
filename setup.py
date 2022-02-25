@@ -30,10 +30,15 @@ class RunExperiments(distutils.cmd.Command):
 
     def run(self):
         from tensorflow.keras import Input, Model
-        from tensorflow.keras.activations import softmax
         from tensorflow.keras.optimizers import Adam
-        from psyki import Injector
-        from test import POKER_RULES, get_mlp, train_network, get_processed_dataset
+        from test import get_mlp, train_network, get_processed_dataset
+        from tensorflow.python.framework.random_seed import set_random_seed
+        from antlr4 import CommonTokenStream, InputStream
+        from psyki.ski import ConstrainingInjector
+        from resources.dist.resources.DatalogLexer import DatalogLexer
+        from resources.dist.resources.DatalogParser import DatalogParser
+        from test import POKER_FEATURE_MAPPING, POKER_CLASS_MAPPING
+        from test.resources import get_list_rules
 
         option_values = [self.experiments, self.epochs, self.layers, self.neurons, self.batch_size, self.knowledge, self.prefix]
         for i, option in enumerate(self.user_options):
@@ -41,6 +46,7 @@ class RunExperiments(distutils.cmd.Command):
 
         optimizer = Adam(learning_rate=0.001)
         train_x, train_y, test_x, test_y = get_processed_dataset('poker', validation=0.05)
+        set_random_seed(123)
 
         for i in range(self.experiments):
             print('Experiment ' + str(i+1) + '/' + str(self.experiments))
@@ -48,29 +54,24 @@ class RunExperiments(distutils.cmd.Command):
             network = get_mlp(net_input, output=10, layers=self.layers, neurons=self.neurons,
                               activation_function='relu',
                               last_activation_function='softmax')
-            main_file_name = str(self.layers) + '_N' + str(self.neurons) + '_E' + str(self.epochs) + '_B' + \
-                             str(self.batch_size) + '_I' + str(i + 1)
+            model = Model(net_input, network)
             if self.knowledge.lower() == 'y':
-                file = self.prefix + 'injection_L' + main_file_name
-                injector = Injector(network, net_input, softmax)
-                injector.inject(POKER_RULES)
+                file = self.prefix + '/model' + str(i + 1)
+                rules = get_list_rules('poker-new')
+                formulae = {rule: DatalogParser(CommonTokenStream(DatalogLexer(InputStream(rule)))) for rule in rules}
+                injector = ConstrainingInjector(model, POKER_CLASS_MAPPING, POKER_FEATURE_MAPPING)
+                injector.inject(formulae)
                 injector.predictor.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
                 model = injector.predictor
 
             else:
-                file = self.prefix + 'classic_L' + main_file_name
+                file = self.prefix + '/model' + str(i + 1)
                 model = Model(net_input, network)
                 model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
             # Train the model with rules
             model.summary()
-            train_network(model, train_x, train_y, test_x, test_y, batch_size=self.batch_size, epochs=self.epochs, file=file)
-
-            # Save the base network without knowledge layer
-            if self.knowledge.lower() == 'y':
-                model = Model(inputs=model.net_input, outputs=model.layers[-3].output)
-                model.compile(optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-                model.save(file)
+            train_network(model, train_x, train_y, test_x, test_y, batch_size=self.batch_size, epochs=self.epochs, file=file, knowledge=self.knowledge.lower() == 'y')
 
 
 class TestAnalysis(distutils.cmd.Command):

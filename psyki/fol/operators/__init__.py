@@ -26,7 +26,7 @@ PRODUCT_PRIORITY: int = 500
 REVERSE_IMPLICATION_PRIORITY: int = 0
 VARIABLE_PRIORITY: int = 1000
 
-DEFAULT_NAME: str = 'Abstract logic operator'
+DEFAULT_NAME: str = 'Abstract datalog operator'
 CLASS_X_NAME: str = 'Class X'
 CLASS_Y_NAME: str = 'Class y'
 CONJUNCTION_NAME: str = 'Conjunction operator'
@@ -172,16 +172,8 @@ class L(LogicOperator):
         return LogicOperator._parse(VARIABLE_REGEX, string)
 
     @staticmethod
-    def relu(x: Tensor):
-        return tf.maximum(x, L.true())
-
-    @staticmethod
-    def reverse_relu(x: Tensor):
-        return tf.minimum(L.false(), x)
-
-    @staticmethod
-    def fringe(x: Tensor):
-        return L.relu(L.reverse_relu(x))
+    def eta(x: Tensor):
+        return tf.minimum(L.false(), tf.maximum(x, L.true()))
 
     @staticmethod
     def wide_fringe(x: Tensor):
@@ -283,7 +275,7 @@ class Equivalence(Op2):
         super().__init__(l1, l2, EQUIVALENCE_NAME)
 
     def compute(self) -> L:
-        return L(L.reverse_relu(tf.abs(self.l1.x - self.l2.x)))
+        return L(L.eta(tf.abs(self.l1.x - self.l2.x)))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -307,7 +299,7 @@ class Implication(Op2):
         super().__init__(l1, l2, IMPLICATION_NAME)
 
     def compute(self) -> L:
-        return L(L.relu(self.l2.x - self.l1.x))
+        return L(L.eta(self.l2.x - self.l1.x))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -320,7 +312,7 @@ class ReverseImplication(Op2):
 
     def __init__(self, l1: L, l2: L):
         """
-        Logic implication between two variable (x -> y)
+        Logic implication between two variable (x <- y)
 
         x | y | r
         0 | 0 | 0
@@ -331,7 +323,7 @@ class ReverseImplication(Op2):
         super().__init__(l1, l2, REVERSE_IMPLICATION_NAME)
 
     def compute(self) -> L:
-        return L(L.relu(self.l1.x - self.l2.x))
+        return L(L.eta(self.l1.x - self.l2.x))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -355,7 +347,7 @@ class DoubleImplication(Op2):
         super().__init__(l1, l2, DOUBLE_IMPLICATION_NAME)
 
     def compute(self) -> L:
-        return L(L.reverse_relu(tf.abs(self.l1.x - self.l2.x)))
+        return L(L.eta(tf.abs(self.l1.x - self.l2.x)))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -374,7 +366,7 @@ class Negation(Op1):
         self.l1 = l1
 
     def compute(self) -> L:
-        return L(L.false() - L.fringe(self.l1.x))
+        return L(L.eta(L.false() - self.l1.x))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -392,7 +384,7 @@ class Conjunction(Op2):
         super().__init__(l1, l2, CONJUNCTION_NAME)
 
     def compute(self) -> L:
-        return L(tf.maximum(self.l1.x, self.l2.x))
+        return L(L.eta(tf.maximum(self.l1.x, self.l2.x)))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -410,7 +402,7 @@ class Disjunction(Op2):
         super().__init__(l1, l2, DISJUNCTION_NAME)
 
     def compute(self) -> L:
-        return L(tf.minimum(self.l1.x, self.l2.x))
+        return L(L.eta(tf.minimum(self.l1.x, self.l2.x)))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -425,7 +417,7 @@ class GreaterEqual(Op2):
         super().__init__(l1, l2, GREATER_EQUAL_NAME)
 
     def compute(self) -> L:
-        return L(L.relu(L.false() - L.relu(self.l1.x - self.l2.x)))
+        return Disjunction(Greater(self.l1, self.l2).compute(), Equivalence(self.l1, self.l2).compute()).compute()
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -440,7 +432,7 @@ class Greater(Op2):
         super().__init__(l1, l2, GREATER_NAME)
 
     def compute(self) -> L:
-        return Conjunction(GreaterEqual(self.l1, self.l2).compute(), Disequal(self.l1, self.l2).compute()).compute()
+        return L(L.eta(L.false() - tf.maximum(L.true(), self.l1.x - self.l2.x)))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:
@@ -555,7 +547,7 @@ class LTEquivalence(Op2):
 
     def __init__(self, l1: LT, l2: LT):
         """
-        Element wise logic equivalence between the two tensors.
+        Element wise datalog equivalence between the two tensors.
         """
         super().__init__(l1, l2, LT_EQUIVALENCE_NAME)
 
@@ -568,7 +560,7 @@ class LTEquivalence(Op2):
                       axis=1)
         element_wise_equivalence = tf.map_fn(lambda x: Equivalence(L(x[0, :]), L(x[1, :])).compute().get_value(), xy)
         result = tf.reduce_max(element_wise_equivalence, axis=1)
-        return L(L.reverse_relu(result))
+        return L(L.eta(result))
 
     @staticmethod
     def parse(string: str) -> tuple[bool, str]:

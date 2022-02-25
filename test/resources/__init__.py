@@ -16,6 +16,15 @@ def get_rules(name: str) -> dict[str, str]:
     return result
 
 
+def get_list_rules(name: str) -> list[str]:
+    result = []
+    with open(str(rules.PATH / name) + '.csv', mode="r") as file:
+        reader = csv.reader(file, delimiter=';')
+        for item in reader:
+            result += item
+    return result
+
+
 def get_ordered_rules(name: str) -> list[str]:
     result = []
     with open(str(rules.PATH / name) + '.csv', mode="r") as file:
