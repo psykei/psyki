@@ -31,6 +31,7 @@ clause
 literal
     : predicate #LiteralPred
     | '¬' '(' pred=clause ')' #LiteralNeg
+    | '¬' pred=clause #LiteralNeg
     ;
 
 predicate

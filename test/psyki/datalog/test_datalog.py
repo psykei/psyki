@@ -159,7 +159,7 @@ class TestFolOnDataset(unittest.TestCase):
         train_y = np.eye(10)[train_y.astype(int)]
         ten_zeros = tf.reshape(tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32), [1, 10])
         x, y = tf.cast(train_x, dtype=tf.float32), tf.cast(train_y, dtype=tf.float32)
-        result = tf.stack([tf.reshape(function(x, y).get_value(), [x.shape[0], ]) for function in functions], axis=1)
+        result = tf.stack([tf.reshape(function(x, y), [x.shape[0], ]) for function in functions], axis=1)
         tf.assert_equal(result, tf.tile(ten_zeros, [train_x.shape[0], 1]))
 
 

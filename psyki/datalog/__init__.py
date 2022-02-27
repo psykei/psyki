@@ -43,7 +43,8 @@ class Fuzzifier(DatalogVisitor):
             class_tensor = reshape(self.class_mapping[class_name], (1, len(self.class_mapping)))
             l = lambda y: eta(reduce_max(abs(tile(class_tensor, (shape(y)[0], 1)) - y), axis=1))
             if class_name not in self.classes.keys():
-                self.classes[class_name] = lambda x, y: eta(r(x) - l(y))
+                # self.classes[class_name] = lambda x, y: eta(r(x) - l(y))
+                self.classes[class_name] = lambda x, y: eta(l(y) - r(x))
             else:
                 incomplete_function = self.classes[class_name]
                 self.classes[class_name] = lambda x, y: eta(minimum(incomplete_function(x, y), eta(r(x) - l(y))))

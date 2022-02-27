@@ -157,6 +157,8 @@ dmypy.json
 # Experiments
 test/experiments/models/old
 test/experiments/statistics/old
+test/experiments/models/dummy
+test/experiments/statistics/dummy
 *.png
 *.svg
 *.pdf
