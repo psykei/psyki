@@ -34,7 +34,7 @@ class ConstrainingInjector(Injector):
         visitor = Fuzzifier(self.class_mapping, self.feature_mapping)
         for _, rule in rules.items():
             visitor.visit(rule.formula())
-        self._fuzzy_functions = [visitor.classes[name] for name in sorted(self.class_mapping.keys(),
+        self._fuzzy_functions = [visitor.classes[name] for name, _ in sorted(self.class_mapping.items(),
                                                                           key=lambda i: i[1])]
         predictor_output = self.predictor.layers[-1].output
         x = Concatenate(axis=1)([self.predictor.input, predictor_output])

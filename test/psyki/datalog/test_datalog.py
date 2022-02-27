@@ -1,8 +1,11 @@
 import unittest
 import numpy as np
 from antlr4 import CommonTokenStream, InputStream
+from tensorflow import constant
+from tensorflow.python.ops.array_ops import gather, gather_nd
+from tensorflow.python.ops.numpy_ops import argmax
+
 from psyki.datalog import Fuzzifier
-from psyki.fol.operators import *
 import tensorflow as tf
 from resources.dist.resources.DatalogLexer import DatalogLexer
 from resources.dist.resources.DatalogParser import DatalogParser
@@ -125,8 +128,8 @@ class TestDatalog(unittest.TestCase):
     def _test_reverse_implication_hand_output_combinations(self, function, hand1, hand2, output1, output2) -> None:
         result1, result2, result3, result4 = self._get_combination_values(function, hand1, hand2, output1, output2)
         tf.assert_equal(result1, true)
-        tf.assert_equal(result2, false)
-        tf.assert_equal(result3, true)
+        tf.assert_equal(result2, true)
+        tf.assert_equal(result3, false)
         tf.assert_equal(result4, true)
 
     def _test_double_implication_hand_output_combinations(self, function, hand1, hand2, output1, output2) -> None:
@@ -149,18 +152,18 @@ class TestDatalog(unittest.TestCase):
         return result1, result2, result3, result4
 
 
-class TestFolOnDataset(unittest.TestCase):
+class TestDatalogOnDataset(unittest.TestCase):
 
-    def test_fol(self):
+    def test_datalog(self):
         poker_training = get_dataset('poker-training')
-        functions = [fuzzifier.classes[name] for name in sorted(POKER_CLASS_MAPPING.keys(), key=lambda i: i[1])]
+        functions = [(name, fuzzifier.classes[name]) for name, _ in sorted(POKER_CLASS_MAPPING.items(), key=lambda i: i[1])]
         train_x = poker_training[:, :-1]
         train_y = poker_training[:, -1]
         train_y = np.eye(10)[train_y.astype(int)]
-        ten_zeros = tf.reshape(tf.constant([0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=tf.float32), [1, 10])
         x, y = tf.cast(train_x, dtype=tf.float32), tf.cast(train_y, dtype=tf.float32)
-        result = tf.stack([tf.reshape(function(x, y), [x.shape[0], ]) for function in functions], axis=1)
-        tf.assert_equal(result, tf.tile(ten_zeros, [train_x.shape[0], 1]))
+        result = tf.stack([tf.reshape(function[1](x, y), [x.shape[0], ]) for function in functions], axis=1)
+        indices = tf.stack([range(0, len(poker_training)), argmax(train_y, axis=1)], axis=1)
+        tf.assert_equal(gather_nd(result, indices), 0.)
 
 
 if __name__ == '__main__':

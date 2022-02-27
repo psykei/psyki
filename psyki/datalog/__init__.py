@@ -14,6 +14,7 @@ class Fuzzifier(DatalogVisitor):
                               for string, index in class_mapping.items()}
         self.classes: dict[str, Callable] = {}
         self._predicates: dict[str, Callable] = {}
+        self.__rhs: dict[str, Callable] = {}
 
     def clause_expression(self, ctx: DatalogParser.ClauseExpressionContext or DatalogParser.ClauseExpressionNoParContext):
         l, r = self.visit(ctx.left), self.visit(ctx.right)
@@ -45,9 +46,11 @@ class Fuzzifier(DatalogVisitor):
             if class_name not in self.classes.keys():
                 # self.classes[class_name] = lambda x, y: eta(r(x) - l(y))
                 self.classes[class_name] = lambda x, y: eta(l(y) - r(x))
+                self.__rhs[class_name] = lambda x: r(x)
             else:
-                incomplete_function = self.classes[class_name]
-                self.classes[class_name] = lambda x, y: eta(minimum(incomplete_function(x, y), eta(r(x) - l(y))))
+                incomplete_function = self.__rhs[class_name]
+                self.classes[class_name] = lambda x, y: eta(l(y) - minimum(incomplete_function(x), r(x)))
+                self.__rhs[class_name] = lambda x: minimum(incomplete_function(x), r(x))
         else:
             if predicate not in self._predicates.keys():
                 self._predicates[predicate] = lambda x: r(x)

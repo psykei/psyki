@@ -9,7 +9,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from tensorflow import Tensor
 from tensorflow.keras import Model
-from psyki.fol import Parser
 from test.experiments import statistics
 from test.experiments import models
 from test.resources import get_rules, get_dataset
@@ -39,8 +38,6 @@ POKER_CLASS_MAPPING = {
         'straight_flush': 8,
         'royal_flush': 9
     }
-
-_parser = Parser.extended_parser()
 
 
 def class_accuracy(_model, _x, _y) -> list:
