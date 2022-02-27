@@ -24,6 +24,12 @@ jobs:
           - '3.9.7'
     name: Run tests on Python ${{ matrix.python-version }}
     steps:
+      - name: Setup Java
+          uses: actions/setup-java@v2
+          with:
+            distribution: 'zulu'
+            java-version: '11'
+
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
@@ -34,6 +40,13 @@ jobs:
 
       - name: Restore Python dependencies
         run: pip install -r requirements.txt
+
+      - name: Generate Prolog parser
+          run: |
+            wget https://www.antlr.org/download/antlr-4.9.2-complete.jar
+            export CLASSPATH="./antlr-4.9.2-complete.jar:$CLASSPATH"
+            java -jar ./antlr-4.9.2-complete.jar -Dlanguage=Python3 resources/Prolog.g4 -visitor -o resources/dist
+
 
       - name: Test
         run: python -m unittest
