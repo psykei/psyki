@@ -57,7 +57,7 @@ class RunExperiments(distutils.cmd.Command):
             model = Model(net_input, network)
             if self.knowledge.lower() == 'y':
                 file = self.prefix + '/model' + str(i + 1)
-                rules = get_list_rules('poker-new')
+                rules = get_list_rules('poker')
                 formulae = {rule: DatalogParser(CommonTokenStream(DatalogLexer(InputStream(rule)))) for rule in rules}
                 injector = ConstrainingInjector(model, POKER_CLASS_MAPPING, POKER_FEATURE_MAPPING)
                 injector.inject(formulae)

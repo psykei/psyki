@@ -16,7 +16,7 @@ true = tf.tile(tf.reshape(constant(0.), [1, 1]), [1, 1])
 false = tf.tile(tf.reshape(constant(1.), [1, 1]), [1, 1])
 
 fuzzifier = Fuzzifier(POKER_CLASS_MAPPING, POKER_FEATURE_MAPPING)
-rules = get_list_rules('poker-new')
+rules = get_list_rules('poker')
 formulae = {rule: DatalogParser(CommonTokenStream(DatalogLexer(InputStream(rule)))) for rule in rules}
 for _, rule in formulae.items():
     fuzzifier.visit(rule.formula())

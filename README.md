@@ -3,11 +3,11 @@
 ## Intro
 
 PSyKI (Platform for Symbolic Knowledge Injection) is intended to be a library for injection symbolic knowledge into sub-symbolic predictors.
-At the moment PSyKe offers a FOL interpreter for rules expressed in Skolem normal form and a general injection technique for neural networks (NN).
+This repository contains the implementation of an experimental technique for SKI, namely the Λ-layer injection.
 
 An `Injector` is an object capable of provide rules to a NN with method `inject`.
-Rules are textual FOL rules that are processed into fuzzy logic functions.
-To convert textual rules user can use method `get_function` of class `Parser`.
+Rules are textual logic formulae that are processed into fuzzy logic functions.
+User can use the `antlr4` parser to convert textual rules into abstract syntax tree.
 
 User must provide in addition to the textual rule two mappings:
 
@@ -26,9 +26,9 @@ features_mapping = {
 For example, with 3 classes and one-hot encoding:
 ```python
 class_mapping = {
-  'setosa': tf.constant([1., 0., 0.]),
-  'virginica': tf.constant([0., 1., 0.]),
-  'versicolor': tf.constant([0., 0., 1.])
+  'setosa': 0,
+  'virginica': 1,
+  'versicolor': 2
 }
 ```
 
@@ -37,40 +37,35 @@ class_mapping = {
 ### Requirements
 
 - python 3.9+
-- tensorflow 2.6.2+
-- scikit-learn 1.0.1+
-- numpy 1.21.4+
-- keras 2.7.0+
-- pandas 1.3.4+
-- scipy 1.7.1+
+- antlr4-python3-runtime~=4.9.3
+- tensorflow~=2.6.2
+- numpy~=1.19.2
+- scikit-learn~=1.0.1
+- pandas~=1.3.4
 
 ### Rule convention
 Ascii symbols for logic operators:
-- variable: camel case string (for scalars defined in variables mapping), X (for vector/class prediction)
-- constant: number (for scalars), lower case string (for vector/class representation defined in output mapping)
-- equivalence: = (for scalar variables and constants), |= (for vectors)
-- not: ~
-- conjunction: ^
-- disjunction: ∨
-- if ... then: ->
-- ... if: <-
-- if and only if: <->
-- not equal: !=
-- less: <
-- less equal: <=
-- greater: >
-- greater equal: >=
-- (math) plus: +
-- (math) times: *
+- variable: `[A-Z]([a-z]|[A-Z]|[0-9])*`
+- constant: `[a-z]([a-z]|[0-9]|[_])*` (literal constant) `[-]?([0-9]*[.])?[0-9]+` (number)
+- equivalence: `=`
+- not: `¬`
+- conjunction: `∧`
+- disjunction: `∨`
+- if ... then: `→`
+- ... if: `←`
+- if and only if: `↔`
+- less: `<`
+- less equal: `≤`
+- greater: `>`
+- greater equal: `≥`
 
-Note: to omit a rule for a class (constant cost 0) it is sufficient to use the skip simbol " / ".
 
 Example for iris:
 
 ```text
-PL <= 2.28 <- X |= setosa
-PL > 2.28 ^ PW > 1.64 <- X |= virginica
-PL > 2.28 ^ PW <= 1.64 <- X |= versicolor
+class(PL,PW,SL,SW,setosa) ← PL ≤ 2.28
+class(PL,PW,SL,SW,virginica) ← PL > 2.28 ∧ PW > 1.64
+class(PL,PW,SL,SW,versicolor) ← PL > 2.28 ∧ PW ≤ 1.64
 ```
 
 ### Demo
@@ -81,17 +76,14 @@ Rules are defined in `resources/rules/iris.csv`.
 
 Example of injection:
 ```python
-parser = Parser.default_parser()
-iris_rules = [parser.get_function(rule, features_mapping, class_mapping)
-               for _, rule in get_rules('iris').items()]
 input_features = Input((4,), name='Input')
 network = get_mlp(input=input_features, output=3, layers=3, neurons=32, activation_function='relu',
                   last_activation_function='softmax')
-injector = Injector(network, input_features)
-injector.inject(iris_rules)
-new_network = injector.predictor
-new_network.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-new_network.summary()
+model = Model(input_features, network)
+injector = ConstrainingInjector(model, class_mapping, features_mapping)
+injector.inject(formulae)
+injector.predictor.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+injector.predictor.summary()
 ```
 
 Output:
@@ -131,7 +123,7 @@ With:
 - a validation set of 50.000 records;
 - an Apple M1 with 8-core CPU, 8-core GPU and 8 GB of RAM;
 
-execution time for one epoch is approximately 20 seconds.
+execution time for one epoch is approximately 5 seconds.
 
 `test/experiments/models` contains the models of neural networks trained after the execution of the script with the following hyperparameters:
 - layers = 3
