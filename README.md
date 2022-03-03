@@ -37,11 +37,12 @@ class_mapping = {
 ### Requirements
 
 - python 3.9+
-- antlr4-python3-runtime~=4.9.3
-- tensorflow~=2.6.2
-- numpy~=1.19.2
-- scikit-learn~=1.0.1
-- pandas~=1.3.4
+- java 11+
+- antlr4-python3-runtime 4.9.3
+- tensorflow 2.6.2
+- numpy 1.19.2
+- scikit-learn 1.0.1
+- pandas 1.3.4
 
 ### Rule convention
 Ascii symbols for logic operators:
