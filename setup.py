@@ -2,6 +2,14 @@ import distutils.cmd
 from setuptools import setup, find_packages
 
 
+class CreateParser:
+    import os
+    os.system('wget https://www.antlr.org/download/antlr-4.9.2-complete.jar')
+    os.system('export CLASSPATH = "./antlr-4.9.2-complete.jar:$CLASSPATH"')
+    os.system('java -jar ./antlr-4.9.2-complete.jar -Dlanguage=Python3 resources/Datalog.g4 -visitor -o resources/dist')
+    os.system('rm ./antlr-4.9.2-complete.jar')
+
+
 class RunExperiments(distutils.cmd.Command):
     description = 'run injection experiments on poker hand dataset'
     user_options = [('experiments=', 'E', 'number of experiments'),
@@ -29,6 +37,12 @@ class RunExperiments(distutils.cmd.Command):
         self.batch_size = int(self.batch_size)
 
     def run(self):
+        from os import system
+        system('wget https://www.antlr.org/download/antlr-4.9.2-complete.jar')
+        system('export CLASSPATH = "./antlr-4.9.2-complete.jar:$CLASSPATH"')
+        system('java -jar ./antlr-4.9.2-complete.jar -Dlanguage=Python3 resources/Datalog.g4 -visitor -o resources/dist')
+        system('rm ./antlr-4.9.2-complete.jar')
+
         from tensorflow.keras import Input, Model
         from tensorflow.keras.optimizers import Adam
         from test import get_mlp, train_network, get_processed_dataset
