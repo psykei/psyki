@@ -163,7 +163,7 @@ setup(
     python_requires='>=3.9.0, <3.10',
     install_requires=[
         'tensorflow~=2.6.2',
-        'scikit-learn~=1.0.1',
+        'scikit-learn~=1.1.1',
     ],  # Optional
     zip_safe=False,
     platforms="Independant",
